@@ -1,34 +1,69 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
 import { Zap, Users, Activity, FileText, Plus, Search, Edit, Trash2, Eye, DollarSign } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [searchTerm, setSearchTerm] = useState('');
 
+
+  const [customers, setCustomers] = useState([]);
+  const [meters, setMeters] = useState([]);
+  const [readings, setReadings] = useState([]);
+  const [bills, setBills] = useState([]);
+
+  useEffect(() => {
+    const fetchAll = async () => {
+      try {
+        const [cRes, mRes, rRes, bRes] = await Promise.all([
+          fetch("http://127.0.0.1:5000/api/customers"),
+          fetch("http://127.0.0.1:5000/api/meters"),
+          fetch("http://127.0.0.1:5000/api/readings"),
+          fetch("http://127.0.0.1:5000/api/bills"),
+        ]);
+
+        const [customers, meters, readings, bills] = await Promise.all([
+          cRes.json(),
+          mRes.json(),
+          rRes.json(),
+          bRes.json(),
+        ]);
+
+        setCustomers(customers);
+        setMeters(meters);
+        setReadings(readings);
+        setBills(bills);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+      }
+    };
+
+    fetchAll();
+  }, []);
+  
   // Sample data
-  const [customers] = useState([
-    { id: 1, name: 'John Smith', address: '123 Main St, City', phone: '555-0101', type: 'Residential', email: 'john@email.com' },
-    { id: 2, name: 'Sarah Johnson', address: '456 Oak Ave, Town', phone: '555-0102', type: 'Commercial', email: 'sarah@email.com' },
-    { id: 3, name: 'Mike Brown', address: '789 Pine Rd, Village', phone: '555-0103', type: 'Residential', email: 'mike@email.com' },
-  ]);
+  // const [customers] = useState([
+  //   { id: 1, name: 'John Smith', address: '123 Main St, City', phone: '555-0101', type: 'Residential', email: 'john@email.com' },
+  //   { id: 2, name: 'Sarah Johnson', address: '456 Oak Ave, Town', phone: '555-0102', type: 'Commercial', email: 'sarah@email.com' },
+  //   { id: 3, name: 'Mike Brown', address: '789 Pine Rd, Village', phone: '555-0103', type: 'Residential', email: 'mike@email.com' },
+  // ]);
 
-  const [meters] = useState([
-    { id: 1, customerId: 1, meterNumber: 'MTR-2024-001', installDate: '2024-01-15', status: 'Active' },
-    { id: 2, customerId: 2, meterNumber: 'MTR-2024-002', installDate: '2024-02-20', status: 'Active' },
-    { id: 3, customerId: 3, meterNumber: 'MTR-2024-003', installDate: '2024-03-10', status: 'Active' },
-  ]);
+  // const [meters] = useState([
+  //   { id: 1, customerId: 1, meterNumber: 'MTR-2024-001', installDate: '2024-01-15', status: 'Active' },
+  //   { id: 2, customerId: 2, meterNumber: 'MTR-2024-002', installDate: '2024-02-20', status: 'Active' },
+  //   { id: 3, customerId: 3, meterNumber: 'MTR-2024-003', installDate: '2024-03-10', status: 'Active' },
+  // ]);
 
-  const [readings] = useState([
-    { id: 1, meterId: 1, date: '2024-10-01', current: 5420, previous: 5120, consumed: 300 },
-    { id: 2, meterId: 2, date: '2024-10-01', current: 8950, previous: 8450, consumed: 500 },
-    { id: 3, meterId: 3, date: '2024-10-01', current: 3280, previous: 3030, consumed: 250 },
-  ]);
+  // const [readings] = useState([
+  //   { id: 1, meterId: 1, date: '2024-10-01', current: 5420, previous: 5120, consumed: 300 },
+  //   { id: 2, meterId: 2, date: '2024-10-01', current: 8950, previous: 8450, consumed: 500 },
+  //   { id: 3, meterId: 3, date: '2024-10-01', current: 3280, previous: 3030, consumed: 250 },
+  // ]);
 
-  const [bills] = useState([
-    { id: 1, customerId: 1, billDate: '2024-10-05', dueDate: '2024-10-20', units: 300, rate: 0.12, amount: 36.00, status: 'Paid' },
-    { id: 2, customerId: 2, billDate: '2024-10-05', dueDate: '2024-10-20', units: 500, rate: 0.15, amount: 75.00, status: 'Pending' },
-    { id: 3, customerId: 3, billDate: '2024-10-05', dueDate: '2024-10-20', units: 250, rate: 0.12, amount: 30.00, status: 'Overdue' },
-  ]);
+  // const [bills] = useState([
+  //   { id: 1, customerId: 1, billDate: '2024-10-05', dueDate: '2024-10-20', units: 300, rate: 0.12, amount: 36.00, status: 'Paid' },
+  //   { id: 2, customerId: 2, billDate: '2024-10-05', dueDate: '2024-10-20', units: 500, rate: 0.15, amount: 75.00, status: 'Pending' },
+  //   { id: 3, customerId: 3, billDate: '2024-10-05', dueDate: '2024-10-20', units: 250, rate: 0.12, amount: 30.00, status: 'Overdue' },
+  // ]);
 
   const stats = [
     { title: 'Total Customers', value: customers.length, icon: Users, color: 'from-blue-500 to-cyan-500' },
