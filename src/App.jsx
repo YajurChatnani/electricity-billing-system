@@ -7,7 +7,23 @@ export default function App() {
 
 
   const [customers, setCustomers] = useState([]);
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [newCustomer, setNewCustomer] = useState({
+    name: "",
+    address: "",
+    phone: "",
+    type: "Residential",
+  });
+
   const [meters, setMeters] = useState([]);
+  const [showAddMeter, setShowAddMeter] = useState(false);
+  const [newMeter, setNewMeter] = useState({
+    meterNumber: "",
+    customerId: "",
+    installDate: "",
+    status: "Active",
+  });
+  
   const [readings, setReadings] = useState([]);
   const [bills, setBills] = useState([]);
 
@@ -153,7 +169,10 @@ export default function App() {
           <Users className="w-7 h-7 text-cyan-400" />
           Customers
         </h2>
-        <button className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/50">
+        <button 
+          onClick={() => setShowAddCustomer(true)}
+          className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/50"
+        >
           <Plus className="w-5 h-5" />
           Add Customer
         </button>
@@ -200,6 +219,94 @@ export default function App() {
           </tbody>
         </table>
       </div>
+
+      {showAddCustomer && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md border border-gray-700 transform transition-all">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="bg-gradient-to-br from-cyan-500 to-blue-500 p-2 rounded-lg">
+                <Users className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-white">Add New Customer</h3>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const id = customers.length + 1;
+                setCustomers([
+                  ...customers,
+                  { id, ...newCustomer },
+                ]);
+                setShowAddCustomer(false);
+                setNewCustomer({ name: "", address: "", phone: "", type: "Residential" });
+              }}
+            >
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-gray-400 text-sm font-medium mb-2">Customer Name</label>
+                  <input
+                    type="text"
+                    placeholder="Enter full name"
+                    value={newCustomer.name}
+                    onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
+                    required
+                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/50 transition-all outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm font-medium mb-2">Address</label>
+                  <input
+                    type="text"
+                    placeholder="Enter complete address"
+                    value={newCustomer.address}
+                    onChange={(e) => setNewCustomer({ ...newCustomer, address: e.target.value })}
+                    required
+                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/50 transition-all outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm font-medium mb-2">Phone Number</label>
+                  <input
+                    type="text"
+                    placeholder="Enter phone number"
+                    value={newCustomer.phone}
+                    onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
+                    required
+                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/50 transition-all outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm font-medium mb-2">Customer Type</label>
+                  <select
+                    value={newCustomer.type}
+                    onChange={(e) => setNewCustomer({ ...newCustomer, type: e.target.value })}
+                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/50 transition-all outline-none cursor-pointer"
+                  >
+                    <option>Residential</option>
+                    <option>Commercial</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-8">
+                <button
+                  type="button"
+                  onClick={() => setShowAddCustomer(false)}
+                  className="px-6 py-3 rounded-lg bg-gray-700 text-white hover:bg-gray-600 transition-all duration-300 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-3 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white transition-all duration-300 font-medium shadow-lg hover:shadow-cyan-500/50"
+                >
+                  Add Customer
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -210,7 +317,10 @@ export default function App() {
           <Zap className="w-7 h-7 text-purple-400" />
           Meters
         </h2>
-        <button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/50">
+        <button 
+          onClick={() => setShowAddMeter(true)}
+          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/50"
+          >
           <Plus className="w-5 h-5" />
           Add Meter
         </button>
@@ -260,6 +370,98 @@ export default function App() {
           </tbody>
         </table>
       </div>
+
+      {showAddMeter && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md border border-gray-700 transform transition-all">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="bg-gradient-to-br from-purple-500 to-pink-500 p-2 rounded-lg">
+                <Zap className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-white">Add New Meter</h3>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const id = meters.length + 1;
+                setMeters([
+                  ...meters,
+                  { id, ...newMeter, customerId: parseInt(newMeter.customerId) },
+                ]);
+                setShowAddMeter(false);
+                setNewMeter({ meterNumber: "", customerId: "", installDate: "", status: "Active" });
+              }}
+            >
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-gray-400 text-sm font-medium mb-2">Meter Number</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., MTR-2024-004"
+                    value={newMeter.meterNumber}
+                    onChange={(e) => setNewMeter({ ...newMeter, meterNumber: e.target.value })}
+                    required
+                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 transition-all outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm font-medium mb-2">Customer</label>
+                  <select
+                    value={newMeter.customerId}
+                    onChange={(e) => setNewMeter({ ...newMeter, customerId: e.target.value })}
+                    required
+                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 transition-all outline-none cursor-pointer"
+                  >
+                    <option value="">Select a customer</option>
+                    {customers.map(customer => (
+                      <option key={customer.id} value={customer.id}>
+                        {customer.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm font-medium mb-2">Install Date</label>
+                  <input
+                    type="date"
+                    value={newMeter.installDate}
+                    onChange={(e) => setNewMeter({ ...newMeter, installDate: e.target.value })}
+                    required
+                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 transition-all outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm font-medium mb-2">Status</label>
+                  <select
+                    value={newMeter.status}
+                    onChange={(e) => setNewMeter({ ...newMeter, status: e.target.value })}
+                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 transition-all outline-none cursor-pointer"
+                  >
+                    <option>Active</option>
+                    <option>Inactive</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-8">
+                <button
+                  type="button"
+                  onClick={() => setShowAddMeter(false)}
+                  className="px-6 py-3 rounded-lg bg-gray-700 text-white hover:bg-gray-600 transition-all duration-300 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-3 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white transition-all duration-300 font-medium shadow-lg hover:shadow-purple-500/50"
+                >
+                  Add Meter
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 
