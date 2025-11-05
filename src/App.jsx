@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Zap, Users, Activity, FileText, Plus, Search, Edit, Trash2, Eye, DollarSign } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -206,6 +206,103 @@ export default function App() {
     { title: 'Monthly Revenue', value: `$${bills.reduce((sum, b) => sum + b.amount, 0).toFixed(2)}`, icon: DollarSign, color: 'from-green-500 to-emerald-500' },
     { title: 'Pending Bills', value: bills.filter(b => b.status === 'Pending').length, icon: FileText, color: 'from-orange-500 to-red-500' },
   ];
+
+  // Navigation tabs declaration with per-tab accent colors (used for rendering and indicator)
+  const navTabs = [
+    // Dashboard should render white accent in navigation
+    { id: 'dashboard', label: 'Dashboard', icon: Activity, color: '#ffffff' }, // white
+    { id: 'customers', label: 'Customers', icon: Users, color: '#06b6d4' }, // cyan
+    { id: 'meters', label: 'Meters', icon: Zap, color: '#a78bfa' }, // purple
+    { id: 'readings', label: 'Readings', icon: Activity, color: '#34d399' }, // green
+    { id: 'bills', label: 'Bills', icon: FileText, color: '#fb923c' }, // orange
+  ];
+
+  // Refs and state for advanced animated indicator (spring-like) under the nav
+  const navRef = useRef(null);
+  const btnRefs = useRef({});
+
+  // indicator holds the currently rendered position/size/color
+  const [indicator, setIndicator] = useState({ left: 0, width: 0, color: navTabs[0].color, glow: 0.9 });
+  // target is the destination the spring will animate towards
+  const targetRef = useRef({ left: 0, width: 0, color: navTabs[0].color, glow: 0.9 });
+  const animRef = useRef(null);
+
+  const lerp = (a, b, t) => a + (b - a) * t;
+
+  // hold a ref to the currently rendered indicator so RAF loop doesn't close over stale state
+  const indicatorRef = useRef({ left: 0, width: 0, color: navTabs[0].color, glow: 0.9 });
+
+  const findButtonElement = (tabId) => {
+    const refEl = btnRefs.current[tabId];
+    if (refEl) return refEl;
+    const navEl = navRef.current;
+    if (!navEl) return null;
+    return navEl.querySelector(`[data-tab="${tabId}"]`);
+  };
+
+  const updateIndicator = (tabId) => {
+    const btn = findButtonElement(tabId);
+    const navEl = navRef.current;
+    if (btn && navEl) {
+      const navRect = navEl.getBoundingClientRect();
+      const btnRect = btn.getBoundingClientRect();
+      const left = btnRect.left - navRect.left + navEl.scrollLeft + 6; // small inset for futuristic padding
+      const width = Math.max(36, btnRect.width - 12);
+      const tab = navTabs.find(t => t.id === tabId) || navTabs[0];
+      targetRef.current = { left, width, color: tab.color, glow: 0.95 };
+    }
+  };
+
+  useEffect(() => {
+    // Start a single RAF loop that eases the visible indicator toward the target (spring/lerp)
+    let last = performance.now();
+    const step = (now) => {
+      const dt = Math.min(64, now - last) / 1000;
+      last = now;
+
+      const cur = indicatorRef.current;
+      const tgt = targetRef.current;
+      const t = 1 - Math.pow(0.001, dt * 60);
+
+      const nextLeft = lerp(cur.left || 0, tgt.left || 0, t);
+      const nextWidth = lerp(cur.width || 0, tgt.width || 0, t);
+      const nextGlow = lerp((cur.glow ?? 0.9), (tgt.glow ?? 0.9), t);
+      const nextColor = tgt.color !== cur.color ? tgt.color : cur.color;
+
+      if (Math.abs(nextLeft - (cur.left||0)) > 0.3 || Math.abs(nextWidth - (cur.width||0)) > 0.3 || nextColor !== cur.color || Math.abs(nextGlow - (cur.glow||0)) > 0.01) {
+        const next = { left: nextLeft, width: nextWidth, color: nextColor, glow: nextGlow };
+        indicatorRef.current = next;
+        setIndicator(next);
+      }
+
+      animRef.current = requestAnimationFrame(step);
+    };
+
+    animRef.current = requestAnimationFrame(step);
+    const onResize = () => updateIndicator(activeTab);
+    window.addEventListener('resize', onResize);
+
+    return () => {
+      cancelAnimationFrame(animRef.current);
+      window.removeEventListener('resize', onResize);
+    };
+    // run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    // update destination when activeTab changes
+    updateIndicator(activeTab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, customers.length]);
+  // Content crossfade on tab change
+  const [contentVisible, setContentVisible] = useState(true);
+  useEffect(() => {
+    // fade out then in for a soft transition
+    setContentVisible(false);
+    const t = setTimeout(() => setContentVisible(true), 140);
+    return () => clearTimeout(t);
+  }, [activeTab]);
 
   // Chart data processing functions
   const processRevenueData = () => {
@@ -1450,35 +1547,64 @@ export default function App() {
       {/* Navigation */}
       <nav className="bg-gray-800/30 backdrop-blur-lg border-b border-gray-700">
         <div className="container mx-auto px-6">
-    <div className="flex gap-1 justify-center">
-            {[
-              { id: 'dashboard', label: 'Dashboard', icon: Activity },
-              { id: 'customers', label: 'Customers', icon: Users },
-              { id: 'meters', label: 'Meters', icon: Zap },
-              { id: 'readings', label: 'Readings', icon: Activity },
-              { id: 'bills', label: 'Bills', icon: FileText },
-            ].map(tab => {
-              const activeClass = activeTab === tab.id
-                ? (
-                  tab.id === 'dashboard' ? 'text-white border-b-2 border-white bg-gray-800/50' :
-                  tab.id === 'customers' ? 'text-cyan-400 border-b-2 border-cyan-400 bg-gray-800/50' :
-                  tab.id === 'meters' ? 'text-purple-400 border-b-2 border-purple-400 bg-gray-800/50' :
-                  tab.id === 'readings' ? 'text-green-400 border-b-2 border-green-400 bg-gray-800/50' :
-                  'text-orange-400 border-b-2 border-orange-400 bg-gray-800/50'
-                )
-                : 'text-gray-400 hover:text-white hover:bg-gray-800/30';
+          <div className="flex gap-1 justify-center">
+            <div ref={navRef} className="relative w-full max-w-4xl">
+              <div className="flex justify-center gap-1 relative">
+                {navTabs.map(tab => {
+                  const activeClass = activeTab === tab.id
+                    ? (
+                      tab.id === 'dashboard' ? 'text-white bg-gray-800/50' :
+                      tab.id === 'customers' ? 'text-cyan-400 bg-gray-800/50' :
+                      tab.id === 'meters' ? 'text-purple-400 bg-gray-800/50' :
+                      tab.id === 'readings' ? 'text-green-400 bg-gray-800/50' :
+                      'text-orange-400 bg-gray-800/50'
+                    )
+                    : 'text-gray-400 hover:text-white hover:bg-gray-800/30';
 
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-6 py-4 font-medium transition-all duration-300 ${activeClass}`}
-                >
-                  <tab.icon className="w-5 h-5" />
-                  {tab.label}
-                </button>
-              );
-            })}
+                  return (
+                    <button
+                      key={tab.id}
+                      data-tab={tab.id}
+                      ref={(el) => (btnRefs.current[tab.id] = el)}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex items-center gap-2 px-6 py-4 font-medium transition-all duration-300 transform ${activeClass} rounded-t-md`}
+                    >
+                      <tab.icon className={`w-5 h-5 transition-transform transition-colors duration-300 ${activeTab === tab.id ? 'scale-110 -translate-y-0.5 text-current' : 'text-gray-300'}`} />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Futuristic sliding indicator: blurred glow + core bar (animated via RAF loop) */}
+              <div
+                aria-hidden
+                className="absolute bottom-0 rounded-full pointer-events-none"
+                style={{
+                  left: `${indicator.left - 8}px`,
+                  width: `${indicator.width + 16}px`,
+                  height: '14px',
+                  background: `radial-gradient(ellipse at center, ${indicator.color} 0%, rgba(0,0,0,0) 60%)`,
+                  filter: `blur(${Math.max(8, (1 - (indicator.glow||0.9)) * 20)}px)`,
+                  opacity: Math.min(1, indicator.glow || 0.9),
+                  transition: 'filter 300ms linear, opacity 250ms linear',
+                }}
+              />
+
+              <div
+                aria-hidden
+                className="absolute bottom-1.5 h-1.5 rounded-full pointer-events-none"
+                style={{
+                  left: `${indicator.left}px`,
+                  width: `${indicator.width}px`,
+                  background: `linear-gradient(90deg, ${indicator.color}, rgba(255,255,255,0.08))`,
+                  boxShadow: `0 6px 20px ${indicator.color}44, 0 2px 6px ${indicator.color}33`,
+                  transform: 'translateZ(0)',
+                }}
+              />
+
+              {/* mouse-follow orb removed per user request */}
+            </div>
           </div>
         </div>
       </nav>
