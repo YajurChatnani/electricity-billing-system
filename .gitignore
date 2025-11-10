@@ -1,5 +1,15 @@
-# Logs
-logs
+# ---- Node / Vite / frontend ----
+# dependencies
+node_modules/
+
+# build output
+dist/
+dist-ssr/
+.vite/
+build/
+
+# logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,18 +17,90 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# npm cache
+.npm/
+package-lock.json.tmp
 
-# Editor directories and files
-.vscode/*
+# environment files (ignore real secrets, keep examples tracked)
+.env
+.env.*
+!.env.example
+
+# ---- Python / backend ----
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Byte-compiled / caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+.eggs/
+
+# pytest / mypy caches
+.pytest_cache/
+.mypy_cache/
+
+# Flask instance folder (environment-specific files)
+backend/instance/
+
+# Python local settings
+.python-version
+
+# ---- Editors, OS, tooling ----
+# VS Code
+.vscode/
 !.vscode/extensions.json
-.idea
+
+# JetBrains
+.idea/
+
+# macOS
 .DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+*.stackdump
+
+# Visual Studio
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
+
+# temporary files
+*.tmp
+*.temp
+*.swp
+*~
+
+# coverage
+.coverage
+coverage/
+htmlcov/
+
+# build system / caches
+.cache/
+.parcel-cache/
+.turbo/
+.next/
+.nuxt/
+
+# lockfiles are usually tracked (do not ignore)
+
+# ---- Optional / local recommended ignores ----
+# Local certificate secrets or keys (ONLY include if you want local certs ignored)
+# Uncomment to ignore PEM/KEY files if appropriate for your project
+# *.pem
+# *.key
+
+# End of file
