@@ -42,36 +42,69 @@ export default function App() {
   const [showEditCustomer, setShowEditCustomer] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
 
-  const handleDeleteCustomer = (id) => {
-    // Optional safety check
-    if (!window.confirm("Are you sure you want to delete this customer?")) return;
+const handleDeleteCustomer = async (customerId) => {
+  if (!window.confirm("Are you sure you want to delete this customer?")) return;
 
-    // Filter out the deleted customer from the list
-    setCustomers(customers.filter((customer) => customer.id !== id));
-  };
+  try {
+    const res = await fetch(`http://127.0.0.1:5000/api/customers/${customerId}`, {
+      method: 'DELETE',
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Failed to delete customer");
+    }
+
+    // remove from local state
+    setCustomers(prev => prev.filter(c => c.customer_id !== customerId));
+  } catch (err) {
+    console.error("❌ Error deleting customer:", err);
+    alert("Failed to delete customer. See console for details.");
+  }
+};
+
+
 
   const [meters, setMeters] = useState([]);
   const [showAddMeter, setShowAddMeter] = useState(false);
   const [newMeter, setNewMeter] = useState({
-    meterNumber: "",
-    customerId: "",
-    installDate: "",
+    meter_number: "",
+    customer_id: "",
+    installation_date: "",
     status: "Active",
   });
   const [showEditMeter, setShowEditMeter] = useState(false);
   const [editingMeter, setEditingMeter] = useState(null);
 
-  const handleDeleteMeter = (id) => {
-    if (!window.confirm("Are you sure you want to delete this meter?")) return;
-    setMeters(meters.filter((meter) => meter.id !== id));
-  };
+  // Use this instead of the old handleDeleteMeter
+const handleDeleteMeter = async (meterId) => {
+  if (!window.confirm("Are you sure you want to delete this meter?")) return;
+
+  try {
+    const res = await fetch(`http://127.0.0.1:5000/api/meters/${meterId}`, {
+      method: 'DELETE',
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to delete meter on server');
+    }
+
+    // remove from local state by backend key
+    setMeters(prev => prev.filter(m => m.meter_id !== meterId));
+  } catch (e) {
+    console.error('Error deleting meter:', e);
+    alert('Failed to delete meter. See console for details.');
+  }
+};
+
 
   const [readings, setReadings] = useState([]);
   const [showAddReading, setShowAddReading] = useState(false);
   const [showEditReading, setShowEditReading] = useState(false);
   const [editingReading, setEditingReading] = useState(null);
   const [newReading, setNewReading] = useState({
-    meterId: "",
+    meter_id: "",
     date: "",
     current: "",
     previous: "",
@@ -87,16 +120,32 @@ export default function App() {
   const [showEditBill, setShowEditBill] = useState(false);
   const [editingBill, setEditingBill] = useState(null);
   const [newBill, setNewBill] = useState({
-    customerId: "",
+    customer_id: "",
     units: "",
     rate: "",
     status: "Pending"
   });
 
-  const handleDeleteBill = (id) => {
-    if (!window.confirm("Are you sure you want to delete this bill?")) return;
-    setBills(bills.filter((bill) => bill.id !== id));
-  };
+  const handleDeleteBill = async (id) => {
+  if (!window.confirm("Are you sure you want to delete this bill?")) return;
+
+  try {
+    const response = await fetch(`http://127.0.0.1:5000/api/bills/${id}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || "Failed to delete bill");
+    }
+
+    setBills((prev) => prev.filter((b) => b.bill_id !== id && b.id !== id));
+  } catch (err) {
+    console.error("❌ Error deleting bill:", err);
+    alert("Failed to delete bill.");
+  }
+};
+
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -138,19 +187,19 @@ export default function App() {
     ];
 
     const sampleMeters = [
-      { id: 1, customerId: 1, meterNumber: 'MTR-2024-001', installDate: '2024-01-15', status: 'Active' },
-      { id: 2, customerId: 2, meterNumber: 'MTR-2024-002', installDate: '2024-02-20', status: 'Active' },
-      { id: 3, customerId: 3, meterNumber: 'MTR-2024-003', installDate: '2024-03-10', status: 'Active' },
-      { id: 4, customerId: 4, meterNumber: 'MTR-2024-004', installDate: '2024-01-05', status: 'Active' },
-      { id: 5, customerId: 5, meterNumber: 'MTR-2024-005', installDate: '2024-02-15', status: 'Active' },
+      { id: 1, customer_id: 1, meter_number: 'MTR-2024-001', installation_date: '2024-01-15', status: 'Active' },
+      { id: 2, customer_id: 2, meter_number: 'MTR-2024-002', installation_date: '2024-02-20', status: 'Active' },
+      { id: 3, customer_id: 3, meter_number: 'MTR-2024-003', installation_date: '2024-03-10', status: 'Active' },
+      { id: 4, customer_id: 4, meter_number: 'MTR-2024-004', installation_date: '2024-01-05', status: 'Active' },
+      { id: 5, customer_id: 5, meter_number: 'MTR-2024-005', installation_date: '2024-02-15', status: 'Active' },
     ];
 
     const sampleReadings = [
-      { id: 1, meterId: 1, date: '2024-10-01', current: 5420, previous: 5120, consumed: 300 },
-      { id: 2, meterId: 2, date: '2024-10-01', current: 8950, previous: 8450, consumed: 500 },
-      { id: 3, meterId: 3, date: '2024-10-01', current: 3280, previous: 3030, consumed: 250 },
-      { id: 4, meterId: 4, date: '2024-10-01', current: 12500, previous: 11800, consumed: 700 },
-      { id: 5, meterId: 5, date: '2024-10-01', current: 4200, previous: 3900, consumed: 300 },
+      { id: 1, meter_id: 1, date: '2024-10-01', current: 5420, previous: 5120, consumed: 300 },
+      { id: 2, meter_id: 2, date: '2024-10-01', current: 8950, previous: 8450, consumed: 500 },
+      { id: 3, meter_id: 3, date: '2024-10-01', current: 3280, previous: 3030, consumed: 250 },
+      { id: 4, meter_id: 4, date: '2024-10-01', current: 12500, previous: 11800, consumed: 700 },
+      { id: 5, meter_id: 5, date: '2024-10-01', current: 4200, previous: 3900, consumed: 300 },
     ];
 
     // Generate monthly bills for the past year
@@ -180,7 +229,7 @@ export default function App() {
 
           bills.push({
             id: id++,
-            customerId: customer.id,
+            customer_id: customer.id,
             billDate: month.toISOString().split('T')[0],
             dueDate: new Date(month.getFullYear(), month.getMonth(), 15).toISOString().split('T')[0],
             units,
@@ -310,8 +359,14 @@ export default function App() {
     const monthlyRevenue = Array(12).fill(0);
     
     bills.forEach(bill => {
-      const month = new Date(bill.billDate).getMonth();
-      monthlyRevenue[month] += bill.amount;
+      const billDate = bill.billDate || bill.billing_date;
+const amount = bill.amount ?? bill.amount_due ?? 0;
+
+if (billDate) {
+  const month = new Date(billDate).getMonth();
+  monthlyRevenue[month] += amount;
+}
+
     });
 
     return {
@@ -335,9 +390,11 @@ export default function App() {
     };
 
     bills.forEach(bill => {
-      const customer = customers.find(c => c.id === bill.customerId);
+      const customer = customers.find(c => c.id === bill.customer_id);
       if (customer) {
-        consumptionByType[customer.type] += bill.units;
+        const units = bill.units ?? bill.units_consumed ?? 0;
+        consumptionByType[customer.type] += units;
+
       }
     });
 
@@ -496,7 +553,7 @@ export default function App() {
               <div key={reading.id} className="bg-gray-900 rounded-lg p-4 hover:bg-gray-750 transition-colors">
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="text-white font-medium">Meter #{reading.meterId}</p>
+                    <p className="text-white font-medium">Meter #{reading.meter_id}</p>
                     <p className="text-gray-400 text-sm">{reading.date}</p>
                   </div>
                   <div className="text-right">
@@ -520,10 +577,12 @@ export default function App() {
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-white font-medium">Bill #{bill.id}</p>
-                    <p className="text-gray-400 text-sm">{bill.billDate}</p>
+                    <p className="text-gray-400 text-sm">
+                      {bill.billDate || bill.billing_date}
+                    </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-green-400 font-bold">${bill.amount.toFixed(2)}</p>
+                    <p className="text-green-400 font-bold"> ${ (bill.amount ?? bill.amount_due ?? 0).toFixed(2) } </p>
                     <span className={`text-xs px-2 py-1 rounded-full ${
                       bill.status === 'Paid' ? 'bg-green-500/20 text-green-400' :
                       bill.status === 'Pending' ? 'bg-yellow-500/20 text-yellow-400' :
@@ -572,7 +631,7 @@ export default function App() {
             {customers.map(customer => (
               <tr key={customer.id} className="border-b border-gray-700 hover:bg-gray-750 transition-colors">
                 <td className="py-4 px-4 text-white">{customer.id}</td>
-                <td className="py-4 px-4 text-white font-medium">{customer.name}</td>
+                <td className="py-4 px-4 text-white font-medium">{customer?.customer_name || customer?.name || "—"}</td>
                 <td className="py-4 px-4 text-gray-300">{customer.address}</td>
                 <td className="py-4 px-4 text-gray-300">{customer.phone}</td>
                 <td className="py-4 px-4">
@@ -596,7 +655,7 @@ export default function App() {
                     </button>
                     <button
                       className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
-                      onClick={() => handleDeleteCustomer(customer.id)}
+                      onClick={() => handleDeleteCustomer(customer.customer_id)}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -618,17 +677,40 @@ export default function App() {
               <h3 className="text-2xl font-bold text-white">Add New Customer</h3>
             </div>
             <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const id = customers.length + 1;
-                setCustomers([
-                  ...customers,
-                  { id, ...newCustomer },
-                ]);
-                setShowAddCustomer(false);
-                setNewCustomer({ name: "", address: "", phone: "", type: "Residential" });
-              }}
-            >
+  onSubmit={async (e) => {
+    e.preventDefault();
+
+    try {
+      const response = await fetch("http://127.0.0.1:5000/api/customers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customer_name: newCustomer.name, // ✅ match Flask key
+          address: newCustomer.address,
+          phone: newCustomer.phone,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to add customer");
+      const savedCustomer = await response.json();
+
+      // update local state so UI refreshes immediately
+      setCustomers([...customers, {
+        id: savedCustomer.customer_id,
+        name: savedCustomer.customer_name,
+        address: savedCustomer.address,
+        phone: savedCustomer.phone,
+        type: newCustomer.type,
+      }]);
+
+      setShowAddCustomer(false);
+      setNewCustomer({ name: "", address: "", phone: "", type: "Residential" });
+    } catch (err) {
+      console.error("Error adding customer:", err);
+      alert("Failed to save customer to database.");
+    }
+  }}
+>
               <div className="space-y-4">
                 <div>
                   <label className="block text-gray-400 text-sm font-medium mb-2">Customer Name</label>
@@ -707,23 +789,48 @@ export default function App() {
             </div>
 
             <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                setCustomers(customers.map(c =>
-                  c.id === editingCustomer.id ? editingCustomer : c
-                ));
-                setShowEditCustomer(false);
-                setEditingCustomer(null);
+              onSubmit={async (e) => {
+  e.preventDefault();
+  try {
+    const response = await fetch(`http://127.0.0.1:5000/api/customers/${editingCustomer.customer_id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customer_name: editingCustomer.name || editingCustomer.customer_name,
+        address: editingCustomer.address,
+        phone: editingCustomer.phone,
+      }),
+    });
 
-                // OPTIONAL: Update backend (uncomment if you want API update)
-                /*
-                fetch(`http://127.0.0.1:5000/api/customers/${editingCustomer.id}`, {
-                  method: "PUT",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(editingCustomer),
-                }).catch(err => console.error("Error updating:", err));
-                */
-              }}
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || "Failed to update customer");
+    }
+
+    const updated = await response.json();
+
+    // ✅ Update local state with backend data
+    setCustomers(prev =>
+      prev.map(c =>
+        c.customer_id === updated.customer_id
+          ? {
+              ...c,
+              customer_name: updated.customer_name,
+              address: updated.address,
+              phone: updated.phone,
+            }
+          : c
+      )
+    );
+
+    setShowEditCustomer(false);
+    setEditingCustomer(null);
+  } catch (err) {
+    console.error("❌ Error updating customer:", err);
+    alert("Failed to update customer.");
+  }
+}}
+
             >
               <div className="space-y-4">
                 <div>
@@ -802,528 +909,625 @@ export default function App() {
     </div>
   );
 
-  const renderMeters = () => (
-    <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-          <Zap className="w-7 h-7 text-purple-400" />
-          Meters
-        </h2>
-        <button 
-          onClick={() => setShowAddMeter(true)}
-          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/50"
-          >
-          <Plus className="w-5 h-5" />
-          Add Meter
-        </button>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-700">
-              <th className="text-left py-3 px-4 text-gray-400 font-semibold">Meter ID</th>
-              <th className="text-left py-3 px-4 text-gray-400 font-semibold">Meter Number</th>
-              <th className="text-left py-3 px-4 text-gray-400 font-semibold">Customer</th>
-              <th className="text-left py-3 px-4 text-gray-400 font-semibold">Install Date</th>
-              <th className="text-left py-3 px-4 text-gray-400 font-semibold">Status</th>
-              <th className="text-left py-3 px-4 text-gray-400 font-semibold">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {meters.map(meter => {
-              const customer = customers.find(c => c.id === meter.customerId);
-              return (
-                <tr key={meter.id} className="border-b border-gray-700 hover:bg-gray-750 transition-colors">
-                  <td className="py-4 px-4 text-white">{meter.id}</td>
-                  <td className="py-4 px-4 text-white font-medium">{meter.meterNumber}</td>
-                  <td className="py-4 px-4 text-gray-300">{customer?.name}</td>
-                  <td className="py-4 px-4 text-gray-300">{meter.installDate}</td>
-                  <td className="py-4 px-4">
-                    <span className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm">
-                      {meter.status}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="flex gap-2">
-                      <button className="p-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 rounded-lg transition-colors">
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button 
-                        className="p-2 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 rounded-lg transition-colors"
-                        onClick={() => {
-                          setEditingMeter(meter);
-                          setShowEditMeter(true);
-                        }}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button 
-                        className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
-                        onClick={() => handleDeleteMeter(meter.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+const renderMeters = () => (
+  <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+    <div className="flex justify-between items-center mb-6">
+      <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+        <Zap className="w-7 h-7 text-purple-400" />
+        Meters
+      </h2>
+      <button
+        onClick={() => setShowAddMeter(true)}
+        className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/50"
+      >
+        <Plus className="w-5 h-5" />
+        Add Meter
+      </button>
+    </div>
 
-      {showAddMeter && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md border border-gray-700 transform transition-all">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-gradient-to-br from-purple-500 to-pink-500 p-2 rounded-lg">
-                <Zap className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold text-white">Add New Meter</h3>
-            </div>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const id = meters.length + 1;
-                setMeters([
-                  ...meters,
-                  { id, ...newMeter, customerId: parseInt(newMeter.customerId) },
-                ]);
-                setShowAddMeter(false);
-                setNewMeter({ meterNumber: "", customerId: "", installDate: "", status: "Active" });
-              }}
+    <div className="overflow-x-auto">
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-gray-700">
+            <th className="text-left py-3 px-4 text-gray-400 font-semibold">Meter ID</th>
+            <th className="text-left py-3 px-4 text-gray-400 font-semibold">Meter Number</th>
+            <th className="text-left py-3 px-4 text-gray-400 font-semibold">Customer</th>
+            <th className="text-left py-3 px-4 text-gray-400 font-semibold">Install Date</th>
+            <th className="text-left py-3 px-4 text-gray-400 font-semibold">Status</th>
+            <th className="text-left py-3 px-4 text-gray-400 font-semibold">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {meters.map((meter) => (
+            <tr
+              key={meter.meter_id}
+              className="border-b border-gray-700 hover:bg-gray-750 transition-colors"
             >
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-gray-400 text-sm font-medium mb-2">Meter Number</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., MTR-2024-004"
-                    value={newMeter.meterNumber}
-                    onChange={(e) => setNewMeter({ ...newMeter, meterNumber: e.target.value })}
-                    required
-                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 transition-all outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm font-medium mb-2">Customer</label>
-                  <select
-                    value={newMeter.customerId}
-                    onChange={(e) => setNewMeter({ ...newMeter, customerId: e.target.value })}
-                    required
-                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 transition-all outline-none cursor-pointer"
+              <td className="py-4 px-4 text-white">{meter.meter_id}</td>
+              <td className="py-4 px-4 text-white font-medium">{meter.meter_number}</td>
+              <td className="py-4 px-4 text-gray-300">
+                {meter.customer_name || "—"}
+              </td>
+              <td className="py-4 px-4 text-gray-300">{meter.installation_date}</td>
+              <td className="py-4 px-4">
+                <span className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm">
+                  {meter.status}
+                </span>
+              </td>
+              <td className="py-4 px-4">
+                <div className="flex gap-2">
+                  <button className="p-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 rounded-lg transition-colors">
+                    <Eye className="w-4 h-4" />
+                  </button>
+                  <button
+                    className="p-2 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 rounded-lg transition-colors"
+                    onClick={() => {
+                      setEditingMeter(meter);
+                      setShowEditMeter(true);
+                    }}
                   >
-                    <option value="">Select a customer</option>
-                    {customers.map(customer => (
-                      <option key={customer.id} value={customer.id}>
-                        {customer.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm font-medium mb-2">Install Date</label>
-                  <input
-                    type="date"
-                    value={newMeter.installDate}
-                    onChange={(e) => setNewMeter({ ...newMeter, installDate: e.target.value })}
-                    required
-                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 transition-all outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm font-medium mb-2">Status</label>
-                  <select
-                    value={newMeter.status}
-                    onChange={(e) => setNewMeter({ ...newMeter, status: e.target.value })}
-                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 transition-all outline-none cursor-pointer"
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
+                    onClick={() => handleDeleteMeter(meter.meter_id)}
                   >
-                    <option>Active</option>
-                    <option>Inactive</option>
-                  </select>
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
-              </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
 
-              <div className="flex justify-end gap-3 mt-8">
-                <button
-                  type="button"
-                  onClick={() => setShowAddMeter(false)}
-                  className="px-6 py-3 rounded-lg bg-gray-700 text-white hover:bg-gray-600 transition-all duration-300 font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-3 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white transition-all duration-300 font-medium shadow-lg hover:shadow-purple-500/50"
-                >
-                  Add Meter
-                </button>
-              </div>
-            </form>
+    {/* ---- Add Meter Modal ---- */}
+    {showAddMeter && (
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md border border-gray-700">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-gradient-to-br from-purple-500 to-pink-500 p-2 rounded-lg">
+              <Zap className="w-6 h-6 text-white" />
+            </div>
+            <h3 className="text-2xl font-bold text-white">Add New Meter</h3>
           </div>
-        </div>
-      )}
 
-      {showEditMeter && editingMeter && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md border border-gray-700 transform transition-all">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-gradient-to-br from-purple-500 to-pink-500 p-2 rounded-lg">
-                <Edit className="w-6 h-6 text-white" />
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                const response = await fetch("http://127.0.0.1:5000/api/meters", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    customer_id: newMeter.customer_id,
+                    meter_number: newMeter.meter_number,
+                    installation_date: newMeter.installation_date,
+                    status: newMeter.status,
+                  }),
+                });
+
+                if (!response.ok) {
+                  const errData = await response.json().catch(() => ({}));
+                  throw new Error(errData.error || "Failed to add meter");
+                }
+
+                const savedMeter = await response.json();
+                const normalized = {
+                  meter_id: savedMeter.meter_id,
+                  meter_number: savedMeter.meter_number,
+                  installation_date: savedMeter.installation_date,
+                  status: savedMeter.status,
+                  customer_id: savedMeter.customer_id,
+                  customer_name: savedMeter.customer_name,
+                };
+
+                setMeters([...meters, normalized]);
+                setShowAddMeter(false);
+                setNewMeter({
+                  meter_number: "",
+                  customer_id: "",
+                  installation_date: "",
+                  status: "Active",
+                });
+              } catch (err) {
+                console.error("❌ Error adding meter:", err);
+                alert("Failed to save meter to database.");
+              }
+            }}
+          >
+            {/* Fields */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-2">Meter Number</label>
+                <input
+                  type="text"
+                  placeholder="e.g., MTR-2024-004"
+                  value={newMeter.meter_number}
+                  onChange={(e) => setNewMeter({ ...newMeter, meter_number: e.target.value })}
+                  required
+                  className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 outline-none"
+                />
               </div>
-              <h3 className="text-2xl font-bold text-white">Edit Meter</h3>
+
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-2">Customer</label>
+                <select
+                  value={newMeter.customer_id}
+                  onChange={(e) => setNewMeter({ ...newMeter, customer_id: parseInt(e.target.value) })}
+                  required
+                  className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 outline-none cursor-pointer"
+                >
+                  <option value="">Select a customer</option>
+                  {customers.map((c) => (
+                    <option key={c.customer_id} value={c.customer_id}>
+                      {c.customer_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-2">Install Date</label>
+                <input
+                  type="date"
+                  value={newMeter.installation_date}
+                  onChange={(e) => setNewMeter({ ...newMeter, installation_date: e.target.value })}
+                  required
+                  className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-2">Status</label>
+                <select
+                  value={newMeter.status}
+                  onChange={(e) => setNewMeter({ ...newMeter, status: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 outline-none cursor-pointer"
+                >
+                  <option>Active</option>
+                  <option>Inactive</option>
+                </select>
+              </div>
             </div>
 
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                setMeters(meters.map(m =>
-                  m.id === editingMeter.id ? editingMeter : m
-                ));
+            <div className="flex justify-end gap-3 mt-8">
+              <button
+                type="button"
+                onClick={() => setShowAddMeter(false)}
+                className="px-6 py-3 rounded-lg bg-gray-700 text-white hover:bg-gray-600 transition-all duration-300 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-6 py-3 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white transition-all duration-300 font-medium shadow-lg hover:shadow-purple-500/50"
+              >
+                Add Meter
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+
+    {/* ---- Edit Meter Modal ---- */}
+    {showEditMeter && editingMeter && (
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md border border-gray-700">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-gradient-to-br from-purple-500 to-pink-500 p-2 rounded-lg">
+              <Edit className="w-6 h-6 text-white" />
+            </div>
+            <h3 className="text-2xl font-bold text-white">Edit Meter</h3>
+          </div>
+
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                const response = await fetch(`http://127.0.0.1:5000/api/meters/${editingMeter.meter_id}`, {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    customer_id: editingMeter.customer_id,
+                    meter_number: editingMeter.meter_number,
+                    installation_date: editingMeter.installation_date,
+                    status: editingMeter.status,
+                  }),
+                });
+
+                if (!response.ok) {
+                  const errData = await response.json().catch(() => ({}));
+                  throw new Error(errData.error || "Failed to update meter");
+                }
+
+                const updated = await response.json();
+
+                // Update in state
+                setMeters((prev) =>
+                  prev.map((m) => (m.meter_id === updated.meter_id ? updated : m))
+                );
+
                 setShowEditMeter(false);
                 setEditingMeter(null);
-              }}
-            >
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-gray-400 text-sm font-medium mb-2">Meter Number</label>
-                  <input
-                    type="text"
-                    value={editingMeter.meterNumber}
-                    onChange={(e) =>
-                      setEditingMeter({ ...editingMeter, meterNumber: e.target.value })
-                    }
-                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 transition-all outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm font-medium mb-2">Customer</label>
-                  <select
-                    value={editingMeter.customerId}
-                    onChange={(e) =>
-                      setEditingMeter({ ...editingMeter, customerId: parseInt(e.target.value) })
-                    }
-                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 transition-all outline-none cursor-pointer"
-                  >
-                    {customers.map(customer => (
-                      <option key={customer.id} value={customer.id}>
-                        {customer.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm font-medium mb-2">Install Date</label>
-                  <input
-                    type="date"
-                    value={editingMeter.installDate}
-                    onChange={(e) =>
-                      setEditingMeter({ ...editingMeter, installDate: e.target.value })
-                    }
-                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 transition-all outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm font-medium mb-2">Status</label>
-                  <select
-                    value={editingMeter.status}
-                    onChange={(e) =>
-                      setEditingMeter({ ...editingMeter, status: e.target.value })
-                    }
-                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 transition-all outline-none cursor-pointer"
-                  >
-                    <option>Active</option>
-                    <option>Inactive</option>
-                  </select>
-                </div>
+              } catch (err) {
+                console.error("❌ Error updating meter:", err);
+                alert("Failed to update meter.");
+              }
+            }}
+          >
+            <div className="space-y-4">
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-2">Meter Number</label>
+                <input
+                  type="text"
+                  value={editingMeter.meter_number}
+                  onChange={(e) => setEditingMeter({ ...editingMeter, meter_number: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 outline-none"
+                />
               </div>
 
-              <div className="flex justify-end gap-3 mt-8">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowEditMeter(false);
-                    setEditingMeter(null);
-                  }}
-                  className="px-6 py-3 rounded-lg bg-gray-700 text-white hover:bg-gray-600 transition-all duration-300 font-medium"
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-2">Customer</label>
+                <select
+                  value={editingMeter.customer_id}
+                  onChange={(e) => setEditingMeter({ ...editingMeter, customer_id: parseInt(e.target.value) })}
+                  className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 outline-none cursor-pointer"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-3 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white transition-all duration-300 font-medium shadow-lg hover:shadow-purple-500/50"
-                >
-                  Save Changes
-                </button>
+                  {customers.map((c) => (
+                    <option key={c.customer_id} value={c.customer_id}>
+                      {c.customer_name}
+                    </option>
+                  ))}
+                </select>
               </div>
-            </form>
-          </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-2">Install Date</label>
+                <input
+                  type="date"
+                  value={editingMeter.installation_date}
+                  onChange={(e) => setEditingMeter({ ...editingMeter, installation_date: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-2">Status</label>
+                <select
+                  value={editingMeter.status}
+                  onChange={(e) => setEditingMeter({ ...editingMeter, status: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/50 outline-none cursor-pointer"
+                >
+                  <option>Active</option>
+                  <option>Inactive</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-8">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEditMeter(false);
+                  setEditingMeter(null);
+                }}
+                className="px-6 py-3 rounded-lg bg-gray-700 text-white hover:bg-gray-600 transition-all duration-300 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-6 py-3 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white transition-all duration-300 font-medium shadow-lg hover:shadow-purple-500/50"
+              >
+                Save Changes
+              </button>
+            </div>
+          </form>
         </div>
-      )}
+      </div>
+    )}
+  </div>
+);
+
+
+const renderReadings = () => (
+  <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+    <div className="flex justify-between items-center mb-6">
+      <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+        <Activity className="w-7 h-7 text-green-400" />
+        Meter Readings
+      </h2>
+      <button
+        onClick={() => setShowAddReading(true)}
+        className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-300 hover:shadow-lg hover:shadow-green-500/50"
+      >
+        <Plus className="w-5 h-5" />
+        Add Reading
+      </button>
     </div>
-  );
 
-  const renderReadings = () => (
-    <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-          <Activity className="w-7 h-7 text-green-400" />
-          Meter Readings
-        </h2>
-        <button 
-          onClick={() => setShowAddReading(true)}
-          className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-300 hover:shadow-lg hover:shadow-green-500/50"
-        >
-          <Plus className="w-5 h-5" />
-          Add Reading
-        </button>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-700">
-              <th className="text-left py-3 px-4 text-gray-400 font-semibold">Reading ID</th>
-              <th className="text-left py-3 px-4 text-gray-400 font-semibold">Meter</th>
-              <th className="text-left py-3 px-4 text-gray-400 font-semibold">Date</th>
-              <th className="text-left py-3 px-4 text-gray-400 font-semibold">Previous</th>
-              <th className="text-left py-3 px-4 text-gray-400 font-semibold">Current</th>
-              <th className="text-left py-3 px-4 text-gray-400 font-semibold">Consumed</th>
-              <th className="text-left py-3 px-4 text-gray-400 font-semibold">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {readings.map(reading => (
-              <tr key={reading.id} className="border-b border-gray-700 hover:bg-gray-750 transition-colors">
-                <td className="py-4 px-4 text-white">{reading.id}</td>
-                <td className="py-4 px-4 text-white font-medium">MTR-{reading.meterId}</td>
-                <td className="py-4 px-4 text-gray-300">{reading.date}</td>
-                <td className="py-4 px-4 text-gray-300">{reading.previous} kWh</td>
-                <td className="py-4 px-4 text-gray-300">{reading.current} kWh</td>
-                <td className="py-4 px-4">
-                  <span className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-sm font-bold">
-                    {reading.consumed} kWh
-                  </span>
-                </td>
-                <td className="py-4 px-4">
-                  <div className="flex gap-2">
-                    <button className="p-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 rounded-lg transition-colors">
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button 
-                      className="p-2 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 rounded-lg transition-colors"
-                      onClick={() => {
-                        setEditingReading(reading);
-                        setShowEditReading(true);
-                      }}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {showAddReading && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md border border-gray-700 transform transition-all">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-gradient-to-br from-green-500 to-emerald-500 p-2 rounded-lg">
-                <Activity className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold text-white">Add New Reading</h3>
-            </div>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const id = readings.length + 1;
-                const consumed = parseInt(newReading.current) - parseInt(newReading.previous);
-                setReadings([
-                  ...readings,
-                  { 
-                    id, 
-                    ...newReading, 
-                    current: parseInt(newReading.current),
-                    previous: parseInt(newReading.previous),
-                    consumed
-                  },
-                ]);
-                setShowAddReading(false);
-                setNewReading({ meterId: "", date: "", current: "", previous: "" });
-              }}
-            >
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-gray-400 text-sm font-medium mb-2">Meter</label>
-                  <select
-                    value={newReading.meterId}
-                    onChange={(e) => setNewReading({ ...newReading, meterId: parseInt(e.target.value) })}
-                    required
-                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-400/50 transition-all outline-none cursor-pointer"
+    <div className="overflow-x-auto">
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-gray-700">
+            <th className="text-left py-3 px-4 text-gray-400 font-semibold">Reading ID</th>
+            <th className="text-left py-3 px-4 text-gray-400 font-semibold">Meter</th>
+            <th className="text-left py-3 px-4 text-gray-400 font-semibold">Date</th>
+            <th className="text-left py-3 px-4 text-gray-400 font-semibold">Units (kWh)</th>
+            <th className="text-left py-3 px-4 text-gray-400 font-semibold">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {readings.map((reading) => (
+            <tr key={reading.reading_id} className="border-b border-gray-700 hover:bg-gray-750 transition-colors">
+              <td className="py-4 px-4 text-white">{reading.reading_id}</td>
+              <td className="py-4 px-4 text-white font-medium">MTR-{reading.meter_id}</td>
+              <td className="py-4 px-4 text-gray-300">{reading.reading_date}</td>
+              <td className="py-4 px-4">
+                <span className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-sm font-bold">
+                  {reading.units_consumed} kWh
+                </span>
+              </td>
+              <td className="py-4 px-4">
+                <div className="flex gap-2">
+                  <button className="p-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 rounded-lg transition-colors">
+                    <Eye className="w-4 h-4" />
+                  </button>
+                  <button
+                    className="p-2 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 rounded-lg transition-colors"
+                    onClick={() => {
+                      // ensure editingReading shape matches backend keys
+                      setEditingReading({
+                        reading_id: reading.reading_id,
+                        meter_id: reading.meter_id,
+                        reading_date: reading.reading_date,
+                        units_consumed: reading.units_consumed,
+                      });
+                      setShowEditReading(true);
+                    }}
                   >
-                    <option value="">Select a meter</option>
-                    {meters.map(meter => (
-                      <option key={meter.id} value={meter.id}>
-                        MTR-{meter.meterNumber}
-                      </option>
-                    ))}
-                  </select>
+                    <Edit className="w-4 h-4" />
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-gray-400 text-sm font-medium mb-2">Reading Date</label>
-                  <input
-                    type="date"
-                    value={newReading.date}
-                    onChange={(e) => setNewReading({ ...newReading, date: e.target.value })}
-                    required
-                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-400/50 transition-all outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm font-medium mb-2">Previous Reading (kWh)</label>
-                  <input
-                    type="number"
-                    value={newReading.previous}
-                    onChange={(e) => setNewReading({ ...newReading, previous: e.target.value })}
-                    required
-                    min="0"
-                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-400/50 transition-all outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm font-medium mb-2">Current Reading (kWh)</label>
-                  <input
-                    type="number"
-                    value={newReading.current}
-                    onChange={(e) => setNewReading({ ...newReading, current: e.target.value })}
-                    required
-                    min={newReading.previous}
-                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-400/50 transition-all outline-none"
-                  />
-                </div>
-              </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
 
-              <div className="flex justify-end gap-3 mt-8">
-                <button
-                  type="button"
-                  onClick={() => setShowAddReading(false)}
-                  className="px-6 py-3 rounded-lg bg-gray-700 text-white hover:bg-gray-600 transition-all duration-300 font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-3 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white transition-all duration-300 font-medium shadow-lg hover:shadow-green-500/50"
-                >
-                  Add Reading
-                </button>
-              </div>
-            </form>
+    {/* ---- Add Reading Modal ---- */}
+    {showAddReading && (
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md border border-gray-700 transform transition-all">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-gradient-to-br from-green-500 to-emerald-500 p-2 rounded-lg">
+              <Activity className="w-6 h-6 text-white" />
+            </div>
+            <h3 className="text-2xl font-bold text-white">Add New Reading</h3>
           </div>
-        </div>
-      )}
 
-      {showEditReading && editingReading && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md border border-gray-700 transform transition-all">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-gradient-to-br from-green-500 to-emerald-500 p-2 rounded-lg">
-                <Edit className="w-6 h-6 text-white" />
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                // Normalize payload to backend fields
+                const payload = {
+                  meter_id: parseInt(newReading.meter_id),
+                  reading_date: newReading.reading_date,
+                  units_consumed: parseFloat(newReading.units_consumed),
+                };
+
+                const response = await fetch("http://127.0.0.1:5000/api/readings", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(payload),
+                });
+
+                if (!response.ok) {
+                  const errData = await response.json().catch(() => ({}));
+                  throw new Error(errData.error || "Failed to add reading");
+                }
+
+                const saved = await response.json();
+
+                // ensure local state uses backend keys
+                setReadings((prev) => [...prev, {
+                  reading_id: saved.reading_id,
+                  meter_id: saved.meter_id,
+                  reading_date: saved.reading_date,
+                  units_consumed: saved.units_consumed,
+                }]);
+
+                setShowAddReading(false);
+                setNewReading({ meter_id: "", reading_date: "", units_consumed: "" });
+              } catch (err) {
+                console.error("❌ Error adding reading:", err);
+                alert("Failed to save reading.");
+              }
+            }}
+          >
+            <div className="space-y-4">
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-2">Meter</label>
+                <select
+                  value={newReading.meter_id || ""}
+                  onChange={(e) => setNewReading({ ...newReading, meter_id: parseInt(e.target.value) || "" })}
+                  required
+                  className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-400/50 transition-all outline-none cursor-pointer"
+                >
+                  <option value="">Select a meter</option>
+                  {meters.map((meter) => (
+                    <option key={meter.meter_id} value={meter.meter_id}>
+                      MTR-{meter.meter_number}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <h3 className="text-2xl font-bold text-white">Edit Reading</h3>
+
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-2">Reading Date</label>
+                <input
+                  type="date"
+                  value={newReading.reading_date || ""}
+                  onChange={(e) => setNewReading({ ...newReading, reading_date: e.target.value })}
+                  required
+                  className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-400/50 transition-all outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-2">Units Consumed (kWh)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={newReading.units_consumed || ""}
+                  onChange={(e) => setNewReading({ ...newReading, units_consumed: e.target.value })}
+                  required
+                  min="0"
+                  className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-400/50 transition-all outline-none"
+                />
+              </div>
             </div>
 
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const consumed = parseInt(editingReading.current) - parseInt(editingReading.previous);
-                setReadings(readings.map(r =>
-                  r.id === editingReading.id ? { ...editingReading, consumed } : r
-                ));
+            <div className="flex justify-end gap-3 mt-8">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddReading(false);
+                  setNewReading({ meter_id: "", reading_date: "", units_consumed: "" });
+                }}
+                className="px-6 py-3 rounded-lg bg-gray-700 text-white hover:bg-gray-600 transition-all duration-300 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-6 py-3 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white transition-all duration-300 font-medium shadow-lg hover:shadow-green-500/50"
+              >
+                Add Reading
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+
+    {/* ---- Edit Reading Modal ---- */}
+    {showEditReading && editingReading && (
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md border border-gray-700 transform transition-all">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-gradient-to-br from-green-500 to-emerald-500 p-2 rounded-lg">
+              <Edit className="w-6 h-6 text-white" />
+            </div>
+            <h3 className="text-2xl font-bold text-white">Edit Reading</h3>
+          </div>
+
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                const payload = {
+                  meter_id: parseInt(editingReading.meter_id),
+                  reading_date: editingReading.reading_date,
+                  units_consumed: parseFloat(editingReading.units_consumed),
+                };
+
+                const response = await fetch(`http://127.0.0.1:5000/api/readings/${editingReading.reading_id}`, {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(payload),
+                });
+
+                if (!response.ok) {
+                  const errData = await response.json().catch(() => ({}));
+                  throw new Error(errData.error || "Failed to update reading");
+                }
+
+                const updated = await response.json();
+
+                setReadings((prev) =>
+                  prev.map((r) => (r.reading_id === updated.reading_id ? updated : r))
+                );
+
                 setShowEditReading(false);
                 setEditingReading(null);
-              }}
-            >
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-gray-400 text-sm font-medium mb-2">Meter</label>
-                  <select
-                    value={editingReading.meterId}
-                    onChange={(e) =>
-                      setEditingReading({ ...editingReading, meterId: parseInt(e.target.value) })
-                    }
-                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-400/50 transition-all outline-none cursor-pointer"
-                  >
-                    {meters.map(meter => (
-                      <option key={meter.id} value={meter.id}>
-                        MTR-{meter.meterNumber}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm font-medium mb-2">Reading Date</label>
-                  <input
-                    type="date"
-                    value={editingReading.date}
-                    onChange={(e) =>
-                      setEditingReading({ ...editingReading, date: e.target.value })
-                    }
-                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-400/50 transition-all outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm font-medium mb-2">Previous Reading (kWh)</label>
-                  <input
-                    type="number"
-                    value={editingReading.previous}
-                    onChange={(e) =>
-                      setEditingReading({ ...editingReading, previous: parseInt(e.target.value) })
-                    }
-                    min="0"
-                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-400/50 transition-all outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm font-medium mb-2">Current Reading (kWh)</label>
-                  <input
-                    type="number"
-                    value={editingReading.current}
-                    onChange={(e) =>
-                      setEditingReading({ ...editingReading, current: parseInt(e.target.value) })
-                    }
-                    min={editingReading.previous}
-                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-400/50 transition-all outline-none"
-                  />
-                </div>
+              } catch (err) {
+                console.error("❌ Error updating reading:", err);
+                alert("Failed to update reading.");
+              }
+            }}
+          >
+            <div className="space-y-4">
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-2">Meter</label>
+                <select
+                  value={editingReading.meter_id || ""}
+                  onChange={(e) =>
+                    setEditingReading({ ...editingReading, meter_id: parseInt(e.target.value) || "" })
+                  }
+                  className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-400/50 transition-all outline-none cursor-pointer"
+                >
+                  {meters.map((meter) => (
+                    <option key={meter.meter_id} value={meter.meter_id}>
+                      MTR-{meter.meter_number}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              <div className="flex justify-end gap-3 mt-8">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowEditReading(false);
-                    setEditingReading(null);
-                  }}
-                  className="px-6 py-3 rounded-lg bg-gray-700 text-white hover:bg-gray-600 transition-all duration-300 font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-3 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white transition-all duration-300 font-medium shadow-lg hover:shadow-green-500/50"
-                >
-                  Save Changes
-                </button>
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-2">Reading Date</label>
+                <input
+                  type="date"
+                  value={editingReading.reading_date || ""}
+                  onChange={(e) => setEditingReading({ ...editingReading, reading_date: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-400/50 transition-all outline-none"
+                />
               </div>
-            </form>
-          </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-2">Units Consumed (kWh)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editingReading.units_consumed || ""}
+                  onChange={(e) => setEditingReading({ ...editingReading, units_consumed: e.target.value })}
+                  min="0"
+                  className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-400/50 transition-all outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-8">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEditReading(false);
+                  setEditingReading(null);
+                }}
+                className="px-6 py-3 rounded-lg bg-gray-700 text-white hover:bg-gray-600 transition-all duration-300 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-6 py-3 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white transition-all duration-300 font-medium shadow-lg hover:shadow-green-500/50"
+              >
+                Save Changes
+              </button>
+            </div>
+          </form>
         </div>
-      )}
-    </div>
-  );
+      </div>
+    )}
+  </div>
+);
+
 
   const renderBills = () => (
     <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
@@ -1351,48 +1555,58 @@ export default function App() {
               <h3 className="text-2xl font-bold text-white">Generate New Bill</h3>
             </div>
             <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const id = bills.length + 1;
-                const amount = parseFloat(newBill.units) * parseFloat(newBill.rate);
-                
-                const today = new Date();
-                const dueDate = new Date();
-                dueDate.setDate(dueDate.getDate() + 15); // Due in 15 days
+  onSubmit={async (e) => {
+  e.preventDefault();
 
-                setBills([
-                  ...bills,
-                  { 
-                    id,
-                    ...newBill,
-                    amount,
-                    billDate: today.toISOString().split('T')[0],
-                    dueDate: dueDate.toISOString().split('T')[0],
-                    customerId: parseInt(newBill.customerId),
-                    units: parseInt(newBill.units),
-                    rate: parseFloat(newBill.rate)
-                  },
-                ]);
-                setShowGenerateBill(false);
-                setNewBill({ customerId: "", units: "", rate: "", status: "Pending" });
-              }}
-            >
+  try {
+    const today = new Date();
+
+    const payload = {
+      customer_id: parseInt(newBill.customer_id),
+      billing_date: today.toISOString().split("T")[0],
+      amount_due: parseFloat(newBill.units) * parseFloat(newBill.rate),
+      status: newBill.status,
+    };
+
+    const response = await fetch("http://127.0.0.1:5000/api/bills", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || "Failed to generate bill");
+    }
+
+    const savedBill = await response.json();
+    setBills((prev) => [...prev, savedBill]);
+    setShowGenerateBill(false);
+    setNewBill({ customer_id: "", units: "", rate: "", status: "Pending" });
+  } catch (err) {
+    console.error("❌ Error generating bill:", err);
+    alert("Failed to generate bill.");
+  }
+ }}
+>
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-gray-400 text-sm font-medium mb-2">Customer</label>
                   <select
-                    value={newBill.customerId}
-                    onChange={(e) => setNewBill({ ...newBill, customerId: e.target.value })}
-                    required
-                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-orange-400 focus:ring-2 focus:ring-orange-400/50 transition-all outline-none cursor-pointer"
-                  >
-                    <option value="">Select a customer</option>
-                    {customers.map(customer => (
-                      <option key={customer.id} value={customer.id}>
-                        {customer.name}
-                      </option>
-                    ))}
-                  </select>
+  value={newBill.customer_id}
+  onChange={(e) => setNewBill({ ...newBill, customer_id: e.target.value })}
+  required
+  className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-orange-400 focus:ring-2 focus:ring-orange-400/50 transition-all outline-none cursor-pointer"
+>
+  <option value="">Select a customer</option>
+  {customers.map((customer) => (
+    <option key={customer.customer_id} value={customer.customer_id}>
+      {customer.customer_name}
+    </option>
+  ))}
+</select>
+
                 </div>
                 <div>
                   <label className="block text-gray-400 text-sm font-medium mb-2">Units Consumed (kWh)</label>
@@ -1468,41 +1682,42 @@ export default function App() {
             </tr>
           </thead>
           <tbody>
-            {bills.map(bill => {
-              const customer = customers.find(c => c.id === bill.customerId);
-              return (
-                <tr key={bill.id} className="border-b border-gray-700 hover:bg-gray-750 transition-colors">
-                  <td className="py-4 px-4 text-white">{bill.id}</td>
-                  <td className="py-4 px-4 text-white font-medium">{customer?.name}</td>
-                  <td className="py-4 px-4 text-gray-300">{bill.billDate}</td>
-                  <td className="py-4 px-4 text-gray-300">{bill.dueDate}</td>
-                  <td className="py-4 px-4 text-gray-300">{bill.units} kWh</td>
-                  <td className="py-4 px-4 text-green-400 font-bold">${bill.amount.toFixed(2)}</td>
-                  <td className="py-4 px-4">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      bill.status === 'Paid' ? 'bg-green-500/20 text-green-400' :
-                      bill.status === 'Pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                      'bg-red-500/20 text-red-400'
-                    }`}>
-                      {bill.status}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="flex gap-2">
-                      <button className="p-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 rounded-lg transition-colors">
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteBill(bill.id)}
-                        className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+            {bills.map((bill) => {
+  const customer = customers.find((c) => c.customer_id === bill.customer_id);
+  return (
+    <tr key={bill.bill_id} className="border-b border-gray-700 hover:bg-gray-750 transition-colors">
+      <td className="py-4 px-4 text-white">{bill.bill_id}</td>
+      <td className="py-4 px-4 text-white font-medium">{customer?.customer_name || "—"}</td>
+      <td className="py-4 px-4 text-gray-300">{bill.billing_date}</td>
+      <td className="py-4 px-4 text-green-400 font-bold">${bill.amount_due.toFixed(2)}</td>
+      <td className="py-4 px-4">
+        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+          bill.status === 'Paid'
+            ? 'bg-green-500/20 text-green-400'
+            : bill.status === 'Pending'
+            ? 'bg-yellow-500/20 text-yellow-400'
+            : 'bg-red-500/20 text-red-400'
+        }`}>
+          {bill.status}
+        </span>
+      </td>
+      <td className="py-4 px-4">
+        <div className="flex gap-2">
+          <button className="p-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 rounded-lg transition-colors">
+            <Eye className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleDeleteBill(bill.bill_id)}
+            className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+})}
+
           </tbody>
         </table>
       </div>
