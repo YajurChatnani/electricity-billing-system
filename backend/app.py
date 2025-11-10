@@ -276,22 +276,35 @@ def get_meter(meter_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/customers/<int:customer_id>', methods=['PUT'])
-def update_customer(customer_id):
+@app.route('/api/meters/<int:meter_id>', methods=['PUT'])
+def update_meter(meter_id):
     try:
-        c = Customer.query.get_or_404(customer_id)
+        meter = Meter.query.get_or_404(meter_id)
         data = request.get_json()
 
-        c.customer_name = data.get('customer_name', c.customer_name)
-        c.address = data.get('address', c.address)
-        c.phone = data.get('phone', c.phone)
+        meter.meter_number = data.get('meter_number', meter.meter_number)
+        meter.installation_date = data.get('installation_date', meter.installation_date)
+        meter.status = data.get('status', meter.status)
+        meter.customer_id = data.get('customer_id', meter.customer_id)
 
         db.session.commit()
 
-        return jsonify(c.to_dict()), 200
+        # Return updated meter + related customer name
+        customer = Customer.query.get(meter.customer_id)
+        return jsonify({
+            'meter_id': meter.meter_id,
+            'meter_number': meter.meter_number,
+            'installation_date': meter.installation_date.isoformat() if hasattr(meter.installation_date, 'isoformat') else meter.installation_date,
+            'status': meter.status,
+            'customer_id': meter.customer_id,
+            'customer_name': customer.customer_name if customer else None
+        }), 200
+
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+        print("❌ Error updating meter:", e)
+        return jsonify({'error': str(e)}), 500
+
 
 
 
