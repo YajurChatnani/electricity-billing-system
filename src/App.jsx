@@ -51,7 +51,7 @@ const handleDeleteCustomer = async (customerId) => {
   if (!window.confirm("Are you sure you want to delete this customer?")) return;
 
   try {
-    const res = await fetch(`http://127.0.0.1:5000/api/customers/${customerId}`, { method: 'DELETE' });
+    const res = await fetch(`https://ebsp-backend.onrender.com/api/customers/${customerId}`, { method: 'DELETE' });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       // show friendly message when customer has linked meters
@@ -88,7 +88,7 @@ const handleDeleteMeter = async (meterId) => {
   if (!window.confirm("Are you sure you want to delete this meter?")) return;
 
   try {
-    const res = await fetch(`http://127.0.0.1:5000/api/meters/${meterId}`, { method: 'DELETE' });
+    const res = await fetch(`https://ebsp-backend.onrender.com/api/meters/${meterId}`, { method: 'DELETE' });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       // show friendly message when meter has linked readings
@@ -127,7 +127,7 @@ const handleDeleteMeter = async (meterId) => {
 
     (async () => {
       try {
-        const res = await fetch(`http://127.0.0.1:5000/api/readings/${id}`, { method: 'DELETE' });
+        const res = await fetch(`https://ebsp-backend.onrender.com/api/readings/${id}`, { method: 'DELETE' });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
           // show friendly message when reading is linked to bills
@@ -184,7 +184,7 @@ const handleDeleteMeter = async (meterId) => {
   if (!window.confirm("Are you sure you want to delete this bill?")) return;
 
   try {
-    const response = await fetch(`http://127.0.0.1:5000/api/bills/${id}`, {
+    const response = await fetch(`https://ebsp-backend.onrender.com/api/bills/${id}`, {
       method: "DELETE",
     });
 
@@ -205,10 +205,10 @@ const handleDeleteMeter = async (meterId) => {
     const fetchAll = async () => {
       try {
         const [cRes, mRes, rRes, bRes] = await Promise.all([
-          fetch("http://127.0.0.1:5000/api/customers"),
-          fetch("http://127.0.0.1:5000/api/meters"),
-          fetch("http://127.0.0.1:5000/api/readings"),
-          fetch("http://127.0.0.1:5000/api/bills"),
+          fetch("https://ebsp-backend.onrender.com/api/customers"),
+          fetch("https://ebsp-backend.onrender.com/api/meters"),
+          fetch("https://ebsp-backend.onrender.com/api/readings"),
+          fetch("https://ebsp-backend.onrender.com/api/bills"),
         ]);
 
         const [customers, meters, readings, bills] = await Promise.all([
@@ -737,7 +737,7 @@ const handleDeleteMeter = async (meterId) => {
     e.preventDefault();
 
     try {
-      const response = await fetch("http://127.0.0.1:5000/api/customers", {
+      const response = await fetch("https://ebsp-backend.onrender.com/api/customers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -843,7 +843,7 @@ const handleDeleteMeter = async (meterId) => {
               onSubmit={async (e) => {
   e.preventDefault();
   try {
-    const response = await fetch(`http://127.0.0.1:5000/api/customers/${editingCustomer.customer_id}`, {
+    const response = await fetch(`https://ebsp-backend.onrender.com/api/customers/${editingCustomer.customer_id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1053,7 +1053,7 @@ const renderMeters = () => (
             onSubmit={async (e) => {
               e.preventDefault();
               try {
-                const response = await fetch("http://127.0.0.1:5000/api/meters", {
+                const response = await fetch("https://ebsp-backend.onrender.com/api/meters", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
@@ -1183,7 +1183,7 @@ const renderMeters = () => (
             onSubmit={async (e) => {
               e.preventDefault();
               try {
-                const response = await fetch(`http://127.0.0.1:5000/api/meters/${editingMeter.meter_id}`, {
+                const response = await fetch(`https://ebsp-backend.onrender.com/api/meters/${editingMeter.meter_id}`, {
                   method: "PUT",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
@@ -1386,7 +1386,7 @@ const renderReadings = () => (
                   units_consumed: parseFloat(newReading.units_consumed),
                 };
 
-                const response = await fetch("http://127.0.0.1:5000/api/readings", {
+                const response = await fetch("https://ebsp-backend.onrender.com/api/readings", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify(payload),
@@ -1502,7 +1502,7 @@ const renderReadings = () => (
                   units_consumed: parseFloat(editingReading.units_consumed),
                 };
 
-                const response = await fetch(`http://127.0.0.1:5000/api/readings/${editingReading.reading_id}`, {
+                const response = await fetch(`https://ebsp-backend.onrender.com/api/readings/${editingReading.reading_id}`, {
                   method: "PUT",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify(payload),
@@ -1664,7 +1664,7 @@ const renderReadings = () => (
       status: newBill.status,
     };
 
-    const response = await fetch("http://127.0.0.1:5000/api/bills", {
+    const response = await fetch("https://ebsp-backend.onrender.com/api/bills", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -1882,7 +1882,7 @@ const renderReadings = () => (
                 status: editingBill.status,
               };
 
-              const res = await fetch(`http://127.0.0.1:5000/api/bills/${editingBill.bill_id}`, {
+              const res = await fetch(`https://ebsp-backend.onrender.com/api/bills/${editingBill.bill_id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
