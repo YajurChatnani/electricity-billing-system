@@ -26,6 +26,11 @@ ChartJS.register(
   Legend
 );
 
+// Main application component for the PowerFlow UI
+// - Handles state for customers, meters, readings and bills
+// - Contains modal flows (add/edit/view) and CRUD handlers that call the Flask backend
+// - Keep this file focused on UI; backend logic lives in backend/app.py (do not modify)
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [searchTerm, setSearchTerm] = useState('');
@@ -46,12 +51,14 @@ const handleDeleteCustomer = async (customerId) => {
   if (!window.confirm("Are you sure you want to delete this customer?")) return;
 
   try {
-    const res = await fetch(`http://127.0.0.1:5000/api/customers/${customerId}`, {
-      method: 'DELETE',
-    });
-
+    const res = await fetch(`http://127.0.0.1:5000/api/customers/${customerId}`, { method: 'DELETE' });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
+      // show friendly message when customer has linked meters
+      if (res.status === 400 && err.error) {
+        alert(err.error);
+        return;
+      }
       throw new Error(err.error || "Failed to delete customer");
     }
 
@@ -81,12 +88,14 @@ const handleDeleteMeter = async (meterId) => {
   if (!window.confirm("Are you sure you want to delete this meter?")) return;
 
   try {
-    const res = await fetch(`http://127.0.0.1:5000/api/meters/${meterId}`, {
-      method: 'DELETE',
-    });
-
+    const res = await fetch(`http://127.0.0.1:5000/api/meters/${meterId}`, { method: 'DELETE' });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
+      // show friendly message when meter has linked readings
+      if (res.status === 400 && err.error) {
+        alert(err.error);
+        return;
+      }
       throw new Error(err.error || 'Failed to delete meter on server');
     }
 
@@ -111,20 +120,65 @@ const handleDeleteMeter = async (meterId) => {
   });
 
   const handleDeleteReading = (id) => {
+    // Deletes a reading by id with a confirmation prompt.
+    // The backend will return HTTP 400 if the reading is referenced by any bills;
+    // we surface that message to the user instead of silently failing.
     if (!window.confirm("Are you sure you want to delete this reading?")) return;
-    setReadings(readings.filter((reading) => reading.id !== id));
+
+    (async () => {
+      try {
+        const res = await fetch(`http://127.0.0.1:5000/api/readings/${id}`, { method: 'DELETE' });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          // show friendly message when reading is linked to bills
+          if (res.status === 400 && err.error) {
+            alert(err.error);
+            return;
+          }
+          throw new Error(err.error || 'Failed to delete reading');
+        }
+
+        // remove from local state (handle both sample keys and backend keys)
+        setReadings(prev => prev.filter(r => (r.reading_id ?? r.id) !== id && String(r.reading_id ?? r.id) !== String(id)));
+      } catch (e) {
+        console.error('❌ Error deleting reading:', e);
+        alert('Failed to delete reading. See console for details.');
+      }
+    })();
   };
 
   const [bills, setBills] = useState([]);
   const [showGenerateBill, setShowGenerateBill] = useState(false);
   const [showEditBill, setShowEditBill] = useState(false);
   const [editingBill, setEditingBill] = useState(null);
+  // view modal state for Eye buttons (read-only)
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewPayload, setViewPayload] = useState({ type: null, item: null });
   const [newBill, setNewBill] = useState({
     customer_id: "",
+    reading_id: "", // optional: pick a reading to base bill date on
+    billing_date: "",
+    due_date: "", // allow user to enter due date
     units: "",
     rate: "",
     status: "Pending"
   });
+
+
+  // Normalize bill objects from backend or local samples so frontend uses
+  // consistent keys: bill_id, customer_id, billing_date, due_date, units, amount_due, status
+  const normalizeBill = (b) => {
+    if (!b) return b;
+    return {
+      bill_id: b?.bill_id ?? b?.id ?? null,
+      customer_id: b?.customer_id ?? b?.customerId ?? b?.customer ?? null,
+      billing_date: b?.billing_date ?? b?.billDate ?? b?.billingDate ?? null,
+      due_date: b?.due_date ?? b?.dueDate ?? null,
+      units: b?.units ?? b?.units_consumed ?? b?.units_consumed ?? 0,
+      amount_due: (b?.amount_due ?? b?.amount ?? 0),
+      status: b?.status ?? 'Pending',
+    };
+  };
 
   const handleDeleteBill = async (id) => {
   if (!window.confirm("Are you sure you want to delete this bill?")) return;
@@ -139,7 +193,7 @@ const handleDeleteMeter = async (meterId) => {
       throw new Error(errData.error || "Failed to delete bill");
     }
 
-    setBills((prev) => prev.filter((b) => b.bill_id !== id && b.id !== id));
+    setBills((prev) => prev.filter((b) => b.bill_id !== id));
   } catch (err) {
     console.error("❌ Error deleting bill:", err);
     alert("Failed to delete bill.");
@@ -167,42 +221,40 @@ const handleDeleteMeter = async (meterId) => {
         setCustomers(customers);
         setMeters(meters);
         setReadings(readings);
-        setBills(bills);
+        setBills(bills.map(normalizeBill));
       } catch (err) {
         console.error("Error fetching data:", err);
+        // Backend unavailable — populate lightweight sample data that matches current schema
+        setSampleData();
       }
     };
 
     fetchAll();
   }, []);
   
-  // Initialize with sample data for development
-  useEffect(() => {
+  // Helper to populate local fallback/sample data when the backend is unreachable
+  const setSampleData = () => {
     const sampleCustomers = [
-      { id: 1, name: 'John Smith', address: '123 Main St, City', phone: '555-0101', type: 'Residential', email: 'john@email.com' },
-      { id: 2, name: 'Sarah Johnson', address: '456 Oak Ave, Town', phone: '555-0102', type: 'Commercial', email: 'sarah@email.com' },
-      { id: 3, name: 'Mike Brown', address: '789 Pine Rd, Village', phone: '555-0103', type: 'Residential', email: 'mike@email.com' },
-      { id: 4, name: 'Tech Solutions Inc', address: '101 Business Park', phone: '555-0104', type: 'Commercial', email: 'info@techsolutions.com' },
-      { id: 5, name: 'Emma Wilson', address: '234 Elm Street', phone: '555-0105', type: 'Residential', email: 'emma@email.com' },
+      { id: 1, customer_id: 1, customer_name: 'Rudransh Pratap Singh', name: 'Rudransh Pratap Singh', address: 'Block A, City', phone: '999-0001', type: 'Residential', email: 'rudransh@example.com' },
+      { id: 2, customer_id: 2, customer_name: 'Yajur Chatnani', name: 'Yajur Chatnani', address: 'Block B, City', phone: '999-0002', type: 'Residential', email: 'yajur@example.com' },
+      { id: 3, customer_id: 3, customer_name: 'Shreyanshi', name: 'Shreyanshi', address: 'Block C, City', phone: '999-0003', type: 'Commercial', email: 'shreyanshi@example.com' },
+      { id: 4, customer_id: 4, customer_name: 'Anik', name: 'Anik', address: 'Block D, City', phone: '999-0004', type: 'Residential', email: 'anik@example.com' },
     ];
 
     const sampleMeters = [
-      { id: 1, customer_id: 1, meter_number: 'MTR-2024-001', installation_date: '2024-01-15', status: 'Active' },
-      { id: 2, customer_id: 2, meter_number: 'MTR-2024-002', installation_date: '2024-02-20', status: 'Active' },
-      { id: 3, customer_id: 3, meter_number: 'MTR-2024-003', installation_date: '2024-03-10', status: 'Active' },
-      { id: 4, customer_id: 4, meter_number: 'MTR-2024-004', installation_date: '2024-01-05', status: 'Active' },
-      { id: 5, customer_id: 5, meter_number: 'MTR-2024-005', installation_date: '2024-02-15', status: 'Active' },
+      { id: 1, meter_id: 1, customer_id: 1, meter_number: 'MTR-1001', installation_date: '2024-01-15', status: 'Active', customer_name: 'Rudransh Pratap Singh' },
+      { id: 2, meter_id: 2, customer_id: 2, meter_number: 'MTR-1002', installation_date: '2024-02-20', status: 'Active', customer_name: 'Yajur Chatnani' },
+      { id: 3, meter_id: 3, customer_id: 3, meter_number: 'MTR-1003', installation_date: '2024-03-10', status: 'Active', customer_name: 'Shreyanshi' },
+      { id: 4, meter_id: 4, customer_id: 4, meter_number: 'MTR-1004', installation_date: '2024-04-05', status: 'Active', customer_name: 'Anik' },
     ];
 
     const sampleReadings = [
-      { id: 1, meter_id: 1, date: '2024-10-01', current: 5420, previous: 5120, consumed: 300 },
-      { id: 2, meter_id: 2, date: '2024-10-01', current: 8950, previous: 8450, consumed: 500 },
-      { id: 3, meter_id: 3, date: '2024-10-01', current: 3280, previous: 3030, consumed: 250 },
-      { id: 4, meter_id: 4, date: '2024-10-01', current: 12500, previous: 11800, consumed: 700 },
-      { id: 5, meter_id: 5, date: '2024-10-01', current: 4200, previous: 3900, consumed: 300 },
+      { id: 1, reading_id: 1, meter_id: 1, reading_date: '2024-10-01', units_consumed: 300 },
+      { id: 2, reading_id: 2, meter_id: 2, reading_date: '2024-10-01', units_consumed: 450 },
+      { id: 3, reading_id: 3, meter_id: 3, reading_date: '2024-10-01', units_consumed: 250 },
+      { id: 4, reading_id: 4, meter_id: 4, reading_date: '2024-10-01', units_consumed: 350 },
     ];
 
-    // Generate monthly bills for the past year
     const generateYearlyBills = () => {
       const bills = [];
       const currentDate = new Date();
@@ -210,20 +262,18 @@ const handleDeleteMeter = async (meterId) => {
 
       for (let i = 11; i >= 0; i--) {
         const month = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-        
+
         sampleCustomers.forEach(customer => {
-          const units = Math.floor(Math.random() * 400) + 200; // Random units between 200-600
+          const units = Math.floor(Math.random() * 400) + 200;
           const rate = customer.type === 'Commercial' ? 0.15 : 0.12;
           const amount = units * rate;
-          
-          // Distribute statuses with more realistic ratios
           const statusRandom = Math.random();
           let status;
-          if (i < 2) { // Recent months more likely to be pending
+          if (i < 2) {
             status = statusRandom < 0.6 ? 'Pending' : 'Paid';
-          } else if (i < 4) { // A few months ago more likely to be paid
+          } else if (i < 4) {
             status = statusRandom < 0.8 ? 'Paid' : statusRandom < 0.9 ? 'Pending' : 'Overdue';
-          } else { // Older bills mostly paid
+          } else {
             status = statusRandom < 0.95 ? 'Paid' : 'Overdue';
           }
 
@@ -242,17 +292,16 @@ const handleDeleteMeter = async (meterId) => {
       return bills;
     };
 
-    // Set the sample data
     setCustomers(sampleCustomers);
     setMeters(sampleMeters);
     setReadings(sampleReadings);
-    setBills(generateYearlyBills());
-  }, []); // Run once on component mount
+    setBills(generateYearlyBills().map(normalizeBill));
+  };
 
   const stats = [
     { title: 'Total Customers', value: customers.length, icon: Users, color: 'from-blue-500 to-cyan-500' },
     { title: 'Active Meters', value: meters.filter(m => m.status === 'Active').length, icon: Zap, color: 'from-purple-500 to-pink-500' },
-    { title: 'Monthly Revenue', value: `$${bills.reduce((sum, b) => sum + b.amount, 0).toFixed(2)}`, icon: DollarSign, color: 'from-green-500 to-emerald-500' },
+    { title: 'Monthly Revenue', value: `$${(bills.reduce((sum, b) => sum + (b.amount_due ?? 0), 0)).toFixed(2)}`, icon: DollarSign, color: 'from-green-500 to-emerald-500' },
     { title: 'Pending Bills', value: bills.filter(b => b.status === 'Pending').length, icon: FileText, color: 'from-orange-500 to-red-500' },
   ];
 
@@ -359,13 +408,13 @@ const handleDeleteMeter = async (meterId) => {
     const monthlyRevenue = Array(12).fill(0);
     
     bills.forEach(bill => {
-      const billDate = bill.billDate || bill.billing_date;
-const amount = bill.amount ?? bill.amount_due ?? 0;
+      const billDate = bill.billing_date;
+      const amount = bill.amount_due ?? 0;
 
-if (billDate) {
-  const month = new Date(billDate).getMonth();
-  monthlyRevenue[month] += amount;
-}
+      if (billDate) {
+        const month = new Date(billDate).getMonth();
+        monthlyRevenue[month] += amount;
+      }
 
     });
 
@@ -390,11 +439,10 @@ if (billDate) {
     };
 
     bills.forEach(bill => {
-      const customer = customers.find(c => c.id === bill.customer_id);
+      const customer = customers.find(c => c.id === bill.customer_id || c.customer_id === bill.customer_id);
       if (customer) {
-        const units = bill.units ?? bill.units_consumed ?? 0;
+        const units = bill.units ?? 0;
         consumptionByType[customer.type] += units;
-
       }
     });
 
@@ -573,16 +621,16 @@ if (billDate) {
           </h3>
           <div className="space-y-3">
             {bills.slice(0, 3).map(bill => (
-              <div key={bill.id} className="bg-gray-900 rounded-lg p-4 hover:bg-gray-750 transition-colors">
+              <div key={bill.bill_id} className="bg-gray-900 rounded-lg p-4 hover:bg-gray-750 transition-colors">
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="text-white font-medium">Bill #{bill.id}</p>
+                    <p className="text-white font-medium">Bill #{bill.bill_id}</p>
                     <p className="text-gray-400 text-sm">
-                      {bill.billDate || bill.billing_date}
+                      {bill.billing_date}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-green-400 font-bold"> ${ (bill.amount ?? bill.amount_due ?? 0).toFixed(2) } </p>
+                    <p className="text-green-400 font-bold"> ${ (bill.amount_due ?? 0).toFixed(2) } </p>
                     <span className={`text-xs px-2 py-1 rounded-full ${
                       bill.status === 'Paid' ? 'bg-green-500/20 text-green-400' :
                       bill.status === 'Pending' ? 'bg-yellow-500/20 text-yellow-400' :
@@ -628,26 +676,34 @@ if (billDate) {
             </tr>
           </thead>
           <tbody>
-            {customers.map(customer => (
-              <tr key={customer.id} className="border-b border-gray-700 hover:bg-gray-750 transition-colors">
-                <td className="py-4 px-4 text-white">{customer.id}</td>
-                <td className="py-4 px-4 text-white font-medium">{customer?.customer_name || customer?.name || "—"}</td>
+            {customers.map((customer) => (
+              <tr key={customer.customer_id ?? customer.id} className="border-b border-gray-700 hover:bg-gray-750 transition-colors">
+                <td className="py-4 px-4 text-white">{customer.customer_id ?? customer.id}</td>
+                <td className="py-4 px-4 text-white font-medium">{customer?.customer_name || customer?.name || '—'}</td>
                 <td className="py-4 px-4 text-gray-300">{customer.address}</td>
                 <td className="py-4 px-4 text-gray-300">{customer.phone}</td>
                 <td className="py-4 px-4">
                   <span className="bg-cyan-500/20 text-cyan-400 px-3 py-1 rounded-full text-sm">
-                    {customer.type}
+                    {customer.type || 'Residential'}
                   </span>
                 </td>
                 <td className="py-4 px-4">
                   <div className="flex gap-2">
-                    <button className="p-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 rounded-lg transition-colors">
+                    <button
+                      className="p-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 rounded-lg transition-colors"
+                      onClick={() => { setViewPayload({ type: 'customer', item: customer }); setShowViewModal(true); }}
+                    >
                       <Eye className="w-4 h-4" />
                     </button>
                     <button
                       className="p-2 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 rounded-lg transition-colors"
                       onClick={() => {
-                        setEditingCustomer(customer);
+                        const normalized = {
+                          ...customer,
+                          name: customer.customer_name ?? customer.name,
+                          customer_name: customer.customer_name ?? customer.name,
+                        };
+                        setEditingCustomer(normalized);
                         setShowEditCustomer(true);
                       }}
                     >
@@ -688,20 +744,15 @@ if (billDate) {
           customer_name: newCustomer.name, // ✅ match Flask key
           address: newCustomer.address,
           phone: newCustomer.phone,
+          type: newCustomer.type || 'Residential',
         }),
       });
 
       if (!response.ok) throw new Error("Failed to add customer");
       const savedCustomer = await response.json();
 
-      // update local state so UI refreshes immediately
-      setCustomers([...customers, {
-        id: savedCustomer.customer_id,
-        name: savedCustomer.customer_name,
-        address: savedCustomer.address,
-        phone: savedCustomer.phone,
-        type: newCustomer.type,
-      }]);
+      // update local state so UI refreshes immediately using backend keys
+      setCustomers(prev => [...prev, savedCustomer]);
 
       setShowAddCustomer(false);
       setNewCustomer({ name: "", address: "", phone: "", type: "Residential" });
@@ -799,6 +850,7 @@ if (billDate) {
         customer_name: editingCustomer.name || editingCustomer.customer_name,
         address: editingCustomer.address,
         phone: editingCustomer.phone,
+        type: editingCustomer.type || editingCustomer?.type || 'Residential',
       }),
     });
 
@@ -818,6 +870,7 @@ if (billDate) {
               customer_name: updated.customer_name,
               address: updated.address,
               phone: updated.phone,
+              type: updated.type,
             }
           : c
       )
@@ -956,7 +1009,10 @@ const renderMeters = () => (
               </td>
               <td className="py-4 px-4">
                 <div className="flex gap-2">
-                  <button className="p-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 rounded-lg transition-colors">
+                  <button
+                    className="p-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 rounded-lg transition-colors"
+                    onClick={() => { setViewPayload({ type: 'meter', item: meter }); setShowViewModal(true); }}
+                  >
                     <Eye className="w-4 h-4" />
                   </button>
                   <button
@@ -1273,7 +1329,10 @@ const renderReadings = () => (
               </td>
               <td className="py-4 px-4">
                 <div className="flex gap-2">
-                  <button className="p-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 rounded-lg transition-colors">
+                  <button
+                    className="p-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 rounded-lg transition-colors"
+                    onClick={() => { setViewPayload({ type: 'reading', item: reading }); setShowViewModal(true); }}
+                  >
                     <Eye className="w-4 h-4" />
                   </button>
                   <button
@@ -1290,6 +1349,12 @@ const renderReadings = () => (
                     }}
                   >
                     <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
+                    onClick={() => handleDeleteReading(reading.reading_id || reading.id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </td>
@@ -1561,10 +1626,41 @@ const renderReadings = () => (
   try {
     const today = new Date();
 
+    // billing_date: prefer reading's date if a reading was selected
+    let billingDate = today.toISOString().split("T")[0];
+    if (newBill.reading_id) {
+      const reading = readings.find(r => String(r.reading_id || r.id) === String(newBill.reading_id));
+      if (reading) {
+        billingDate = reading.reading_date || reading.date || billingDate;
+      }
+    }
+
+    // due_date: use user input if set; otherwise default to 15th of current month
+    const dueDate = newBill.due_date && newBill.due_date.length ? newBill.due_date : new Date(today.getFullYear(), today.getMonth(), 15).toISOString().split('T')[0];
+
+    // Require a reading selection now
+    if (!newBill.reading_id) {
+      alert('Please select a reading.');
+      return;
+    }
+
+    const reading = readings.find(r => String(r.reading_id || r.id) === String(newBill.reading_id));
+    if (!reading) {
+      alert('Selected reading not found.');
+      return;
+    }
+
+    const unitsVal = parseFloat(reading.units_consumed ?? reading.consumed ?? reading.units ?? 0) || 0;
+    const rateVal = parseFloat(newBill.rate) || 0;
+    const amountDueVal = unitsVal * rateVal;
+
     const payload = {
       customer_id: parseInt(newBill.customer_id),
-      billing_date: today.toISOString().split("T")[0],
-      amount_due: parseFloat(newBill.units) * parseFloat(newBill.rate),
+      billing_date: billingDate,
+      due_date: dueDate,
+      reading_id: newBill.reading_id || null,
+      units: unitsVal,
+      amount_due: amountDueVal,
       status: newBill.status,
     };
 
@@ -1580,9 +1676,10 @@ const renderReadings = () => (
     }
 
     const savedBill = await response.json();
-    setBills((prev) => [...prev, savedBill]);
+    // normalize saved bill shape before adding
+    setBills((prev) => [...prev, normalizeBill(savedBill)]);
     setShowGenerateBill(false);
-    setNewBill({ customer_id: "", units: "", rate: "", status: "Pending" });
+  setNewBill({ customer_id: "", reading_id: "", billing_date: "", due_date: "", units: "", rate: "", status: "Pending" });
   } catch (err) {
     console.error("❌ Error generating bill:", err);
     alert("Failed to generate bill.");
@@ -1609,17 +1706,40 @@ const renderReadings = () => (
 
                 </div>
                 <div>
-                  <label className="block text-gray-400 text-sm font-medium mb-2">Units Consumed (kWh)</label>
-                  <input
-                    type="number"
-                    placeholder="Enter units consumed"
-                    value={newBill.units}
-                    onChange={(e) => setNewBill({ ...newBill, units: e.target.value })}
+                  <label className="block text-gray-400 text-sm font-medium mb-2">Reading (required)</label>
+                  <select
+                    value={newBill.reading_id}
                     required
-                    min="0"
+                    onChange={(e) => {
+                      const rid = e.target.value;
+                      const reading = readings.find(r => String(r.reading_id || r.id) === String(rid));
+                      setNewBill({
+                        ...newBill,
+                        reading_id: rid,
+                        billing_date: reading ? (reading.reading_date || reading.date) : newBill.billing_date
+                      });
+                    }}
+                    className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-orange-400 focus:ring-2 focus:ring-orange-400/50 transition-all outline-none cursor-pointer"
+                  >
+                    <option value="">Select a reading</option>
+                    {readings.map(r => (
+                      <option key={r.reading_id || r.id} value={r.reading_id || r.id}>
+                        {`Reading #${r.reading_id || r.id} — ${ (r.reading_date || r.date) || '—' }`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-gray-400 text-sm font-medium mb-2">Due Date</label>
+                  <input
+                    type="date"
+                    value={newBill.due_date || ''}
+                    onChange={(e) => setNewBill({ ...newBill, due_date: e.target.value })}
                     className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-orange-400 focus:ring-2 focus:ring-orange-400/50 transition-all outline-none"
                   />
                 </div>
+                {/* units input removed - units are imported from selected reading */}
                 <div>
                   <label className="block text-gray-400 text-sm font-medium mb-2">Rate per Unit ($)</label>
                   <input
@@ -1683,45 +1803,200 @@ const renderReadings = () => (
           </thead>
           <tbody>
             {bills.map((bill) => {
-  const customer = customers.find((c) => c.customer_id === bill.customer_id);
-  return (
-    <tr key={bill.bill_id} className="border-b border-gray-700 hover:bg-gray-750 transition-colors">
-      <td className="py-4 px-4 text-white">{bill.bill_id}</td>
-      <td className="py-4 px-4 text-white font-medium">{customer?.customer_name || "—"}</td>
-      <td className="py-4 px-4 text-gray-300">{bill.billing_date}</td>
-      <td className="py-4 px-4 text-green-400 font-bold">${bill.amount_due.toFixed(2)}</td>
-      <td className="py-4 px-4">
-        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-          bill.status === 'Paid'
-            ? 'bg-green-500/20 text-green-400'
-            : bill.status === 'Pending'
-            ? 'bg-yellow-500/20 text-yellow-400'
-            : 'bg-red-500/20 text-red-400'
-        }`}>
-          {bill.status}
-        </span>
-      </td>
-      <td className="py-4 px-4">
-        <div className="flex gap-2">
-          <button className="p-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 rounded-lg transition-colors">
-            <Eye className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => handleDeleteBill(bill.bill_id)}
-            className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      </td>
-    </tr>
-  );
-})}
+              const customer = customers.find((c) => c.customer_id === bill.customer_id || c.id === bill.customer_id);
+              return (
+                <tr key={bill.bill_id} className="border-b border-gray-700 hover:bg-gray-750 transition-colors">
+                  <td className="py-4 px-4 text-white">{bill.bill_id}</td>
+                  <td className="py-4 px-4 text-white font-medium">{customer?.customer_name || customer?.name || "—"}</td>
+                  <td className="py-4 px-4 text-gray-300">{bill.billing_date}</td>
+                  <td className="py-4 px-4 text-gray-300">{bill.due_date || '—'}</td>
+                  <td className="py-4 px-4 text-white">{(bill.units ?? 0)}</td>
+                  <td className="py-4 px-4 text-green-400 font-bold">${((bill.amount_due ?? 0)).toFixed(2)}</td>
+                  <td className="py-4 px-4">
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      bill.status === 'Paid'
+                        ? 'bg-green-500/20 text-green-400'
+                        : bill.status === 'Pending'
+                        ? 'bg-yellow-500/20 text-yellow-400'
+                        : 'bg-red-500/20 text-red-400'
+                    }`}>
+                      {bill.status}
+                    </span>
+                  </td>
+                  <td className="py-4 px-4">
+                    <div className="flex gap-2">
+                                    <button
+                                      className="p-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 rounded-lg transition-colors"
+                                      onClick={() => { setViewPayload({ type: 'bill', item: bill }); setShowViewModal(true); }}
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setEditingBill(bill);
+                                        setShowEditBill(true);
+                                      }}
+                                      className="p-2 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 rounded-lg transition-colors"
+                                    >
+                                      <Edit className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteBill(bill.bill_id)}
+                                      className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
 
           </tbody>
         </table>
       </div>
     </div>
+  );
+
+  {/* ---- Edit Bill Modal ---- */}
+  const renderEditBillModal = () => (
+    showEditBill && editingBill ? (
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md border border-gray-700">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-gradient-to-br from-yellow-500 to-amber-500 p-2 rounded-lg">
+              <Edit className="w-6 h-6 text-white" />
+            </div>
+            <h3 className="text-2xl font-bold text-white">Edit Bill</h3>
+          </div>
+
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            try {
+              const payload = {
+                billing_date: editingBill.billing_date,
+                due_date: editingBill.due_date,
+                reading_id: editingBill.reading_id || null,
+                units: parseFloat(editingBill.units) || 0,
+                amount_due: parseFloat(editingBill.amount_due ?? editingBill.amount_due) || 0,
+                status: editingBill.status,
+              };
+
+              const res = await fetch(`http://127.0.0.1:5000/api/bills/${editingBill.bill_id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+              });
+
+              if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || 'Failed to update bill');
+              }
+
+              const updated = await res.json();
+              setBills(prev => prev.map(b => (b.bill_id === updated.bill_id ? normalizeBill(updated) : b)));
+              setShowEditBill(false);
+              setEditingBill(null);
+            } catch (err) {
+              console.error('❌ Error updating bill:', err);
+              alert('Failed to update bill.');
+            }
+          }}>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-2">Billing Date</label>
+                <input type="date" value={editingBill.billing_date || ''} onChange={(e)=>setEditingBill({...editingBill, billing_date: e.target.value})} className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/50 outline-none" />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-2">Due Date</label>
+                <input type="date" value={editingBill.due_date || ''} onChange={(e)=>setEditingBill({...editingBill, due_date: e.target.value})} className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/50 outline-none" />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-2">Units</label>
+                <input type="number" step="0.01" value={editingBill.units ?? ''} onChange={(e)=>setEditingBill({...editingBill, units: e.target.value})} className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/50 outline-none" />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-2">Amount Due</label>
+                <input type="number" step="0.01" value={(editingBill.amount_due ?? '')} onChange={(e)=>setEditingBill({...editingBill, amount_due: e.target.value})} className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/50 outline-none" />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-2">Status</label>
+                <select value={editingBill.status} onChange={(e)=>setEditingBill({...editingBill, status: e.target.value})} className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/50 outline-none cursor-pointer">
+                  <option>Pending</option>
+                  <option>Paid</option>
+                  <option>Overdue</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-8">
+              <button type="button" onClick={()=>{setShowEditBill(false); setEditingBill(null);}} className="px-6 py-3 rounded-lg bg-gray-700 text-white hover:bg-gray-600">Cancel</button>
+              <button type="submit" className="px-6 py-3 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-500 text-white">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    ) : null
+  );
+
+  const renderViewModal = () => (
+    showViewModal && viewPayload && viewPayload.item ? (
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-lg border border-gray-700">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold text-white">{viewPayload.type?.toUpperCase()} Details</h3>
+            <button className="text-gray-400 hover:text-white" onClick={() => { setShowViewModal(false); setViewPayload({ type: null, item: null }); }}>
+              Close
+            </button>
+          </div>
+          <div className="space-y-3 text-sm text-gray-300">
+            {viewPayload.type === 'customer' && (
+              <div>
+                <p className="text-white font-medium">{viewPayload.item.customer_name || viewPayload.item.name}</p>
+                <p>Address: {viewPayload.item.address || '—'}</p>
+                <p>Phone: {viewPayload.item.phone || '—'}</p>
+                <p>Type: {viewPayload.item.type || 'Residential'}</p>
+              </div>
+            )}
+
+            {viewPayload.type === 'meter' && (
+              <div>
+                <p className="text-white font-medium">Meter #{viewPayload.item.meter_id}</p>
+                <p>Number: {viewPayload.item.meter_number}</p>
+                <p>Customer: {viewPayload.item.customer_name || viewPayload.item.customer_id}</p>
+                <p>Install Date: {viewPayload.item.installation_date || '—'}</p>
+                <p>Status: {viewPayload.item.status || '—'}</p>
+              </div>
+            )}
+
+            {viewPayload.type === 'reading' && (
+              <div>
+                <p className="text-white font-medium">Reading #{viewPayload.item.reading_id}</p>
+                <p>Meter ID: {viewPayload.item.meter_id}</p>
+                <p>Date: {viewPayload.item.reading_date || viewPayload.item.date}</p>
+                <p>Units: {viewPayload.item.units_consumed ?? viewPayload.item.consumed ?? '—'}</p>
+              </div>
+            )}
+
+            {viewPayload.type === 'bill' && (
+              <div>
+                <p className="text-white font-medium">Bill #{viewPayload.item.bill_id}</p>
+                <p>Customer ID: {viewPayload.item.customer_id}</p>
+                <p>Bill Date: {viewPayload.item.billing_date}</p>
+                <p>Due Date: {viewPayload.item.due_date || '—'}</p>
+                <p>Units: {viewPayload.item.units ?? 0}</p>
+                <p>Amount: ${((viewPayload.item.amount_due ?? viewPayload.item.amount) || 0).toFixed ? ((viewPayload.item.amount_due ?? viewPayload.item.amount) || 0).toFixed(2) : (viewPayload.item.amount_due ?? viewPayload.item.amount)}</p>
+                <p>Status: {viewPayload.item.status}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    ) : null
   );
 
   return (
@@ -1832,6 +2107,8 @@ const renderReadings = () => (
         {activeTab === 'readings' && renderReadings()}
         {activeTab === 'bills' && renderBills()}
       </main>
+      {renderEditBillModal()}
+      {renderViewModal()}
     </div>
   );
 }
